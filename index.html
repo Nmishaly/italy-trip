@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1B4B6F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="אנגל באיטליה">
+<link rel="manifest" href="manifest.json">
 <title>משפחת אנגל באיטליה — קיץ תשפ"ו</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
@@ -62,6 +67,7 @@ header.top::after{content:"";position:absolute;inset:0;background-image:radial-g
 .fb-dot{width:8px; height:8px; border-radius:50%; background:#aaa; flex-shrink:0; transition:background .4s;}
 .fb-dot.ok{background:#4caf7d;}
 .fb-dot.err{background:#e05a4b;}
+.fb-dot.warn{background:#e8a33d;}
 .countdown{margin-top:16px; position:relative; z-index:1; display:flex; gap:10px; align-items:flex-end;}
 .countdown .num{background:var(--mustard); color:var(--blue-dark); font-family:'Frank Ruhl Libre',serif; font-weight:900; font-size:30px; border-radius:13px; padding:7px 14px; line-height:1;}
 .countdown .lbl{font-size:11.5px; padding-bottom:8px; opacity:.85;}
@@ -136,6 +142,12 @@ textarea{width:100%; min-height:54px; resize:vertical;}
 a.link{color:var(--blue); font-weight:600;}
 .empty-hint{text-align:center; color:#bbb; font-size:12.5px; padding:18px 0;}
 footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
+#save-toast{
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+  background:var(--cypress); color:#fff; padding:8px 20px;
+  border-radius:20px; font-size:13px; font-weight:600; z-index:300;
+  opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap;
+}
 </style>
 </head>
 <body>
@@ -184,6 +196,8 @@ footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
   </div>
 </div>
 
+<div id="save-toast">נשמר ✓</div>
+
 <div id="more-sheet">
   <div class="sheet">
     <div class="section-title" style="margin:0 0 4px">עוד טאבים</div>
@@ -208,7 +222,7 @@ const TABS = [
   {id:"contacts", ic:"📞", label:"אנשי קשר"},
   {id:"board", ic:"📋", label:"לוח מודעות"},
 ];
-const MOBILE_PRIMARY = ["home","itinerary","places","stay","kosher"];
+const MOBILE_PRIMARY = ["home","itinerary","packing","contacts","kosher"];
 
 const FAMILIES = ["שלמה ונאוה אנגל","אלעד ועדי לוביץ'","נצר ונעמה משאלי","דניאל ומוריה אנגל","הלל אנגל"];
 
@@ -218,19 +232,31 @@ const TRIP_END = new Date(2026,7,5); // Aug 5 2026
 let currentTab = "home";
 let cache = {};
 
-/* ---------- storage helpers (Firebase Realtime Database) ---------- */
+/* ---------- storage helpers (Firebase Realtime Database + localStorage cache) ---------- */
 const FIREBASE_URL = "https://engel-italy-trip-default-rtdb.firebaseio.com";
+const LS_PREFIX = 'trip-';
 
 async function loadKey(key, fallback){
   try{
     const res = await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`);
-    if(!res.ok) return fallback;
+    if(!res.ok) throw new Error('bad response');
     const data = await res.json();
-    if(data === null || data === undefined) return fallback;
+    if(data === null || data === undefined){
+      const cached = localStorage.getItem(LS_PREFIX + key);
+      if(cached){ try{ return JSON.parse(cached); }catch(e){} }
+      return fallback;
+    }
+    localStorage.setItem(LS_PREFIX + key, JSON.stringify(data));
     return data;
-  }catch(e){ console.error("load fail", key, e); return fallback; }
+  }catch(e){
+    console.error("load fail", key, e);
+    const cached = localStorage.getItem(LS_PREFIX + key);
+    if(cached){ try{ setFbStatus(false, true); return JSON.parse(cached); }catch(e2){} }
+    return fallback;
+  }
 }
 async function saveKey(key, value){
+  localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));
   try{
     await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, {
       method:'PUT',
@@ -238,15 +264,21 @@ async function saveKey(key, value){
       body: JSON.stringify(value)
     });
     setFbStatus(true);
+    showSaveToast();
   }catch(e){ console.error("save fail", key, e); setFbStatus(false); }
 }
 
-function setFbStatus(ok){
+function setFbStatus(ok, offline=false){
   const dot = document.getElementById('fb-dot');
   const txt = document.getElementById('fb-status-text');
   if(!dot) return;
-  dot.className = 'fb-dot ' + (ok ? 'ok' : 'err');
-  txt.textContent = ok ? 'מסונכרן עם Firebase' : 'אין חיבור לשרת';
+  if(offline){
+    dot.className = 'fb-dot warn';
+    txt.textContent = 'מציג נתונים שמורים — לא מחובר';
+  } else {
+    dot.className = 'fb-dot ' + (ok ? 'ok' : 'err');
+    txt.textContent = ok ? 'מחובר ✓' : 'שמירה נכשלה — בדקו חיבור';
+  }
 }
 
 async function checkFbConnection(){
@@ -254,6 +286,14 @@ async function checkFbConnection(){
     const res = await fetch(`${FIREBASE_URL}/.json?shallow=true`, {signal: AbortSignal.timeout(5000)});
     setFbStatus(res.ok);
   }catch(e){ setFbStatus(false); }
+}
+
+function showSaveToast(){
+  const toast = document.getElementById('save-toast');
+  if(!toast) return;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>{ toast.style.opacity='0'; }, 1800);
 }
 
 function openWazeToVilla(){
@@ -266,6 +306,7 @@ function uid(){ return Math.random().toString(36).slice(2,9); }
 function tryLogin(){
   const v = document.getElementById('code-input').value.trim();
   if(v === ACCESS_CODE){
+    sessionStorage.setItem('trip-auth','1');
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
     boot();
@@ -275,6 +316,8 @@ function tryLogin(){
 }
 document.getElementById('code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
 function logout(){
+  if(!confirm('לצאת מהאפליקציה?')) return;
+  sessionStorage.removeItem('trip-auth');
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('code-input').value='';
@@ -350,11 +393,44 @@ RENDERERS.home = async function(){
         <div class="avatar">${n.author.slice(0,2)}</div>
         <div><div class="who">${n.author}</div><div class="txt2">${escapeHtml(n.text)}</div><div class="time2">${n.time}</div></div>
       </div>`).join('') : '<div class="card empty-hint">אין עדיין הודעות — הוסיפו אחת בלוח המודעות</div>'}
-    <button class="small-btn" onclick="switchTab('board')">לכל הלוח ←</button>
+    <button class="small-btn" onclick="switchTab('board')">← לכל הלוח</button>
+
+    <div class="section-title">💾 גיבוי נתונים</div>
+    <div class="card" style="display:flex; gap:10px;">
+      <button class="btn btn-save" style="flex:1" onclick="exportData()">⬇️ ייצוא JSON</button>
+      <button class="btn" style="flex:1; background:var(--mustard); color:var(--blue-dark);" onclick="triggerImport()">⬆️ ייבוא JSON</button>
+    </div>
+    <p class="muted" style="margin-top:4px">שמרו עותק של כל הנתונים כקובץ או העלו גיבוי קיים.</p>
   `;
 };
 
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function exportData(){
+  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','tasks','preflight','contacts'];
+  const out = {};
+  for(const k of keys){
+    const v = await loadKey(k, null);
+    if(v !== null) out[k] = v;
+  }
+  const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='italy-trip-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+function triggerImport(){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      const data = JSON.parse(await f.text());
+      for(const [key, value] of Object.entries(data)) await saveKey(key, value);
+      await switchTab(currentTab);
+    }catch(e2){ alert('קובץ לא תקין — ודאו שזה קובץ גיבוי מהאפליקציה'); }
+  };
+  inp.click();
+}
 
 /* =================================================================
    ITINERARY
@@ -378,15 +454,19 @@ RENDERERS.itinerary = async function(){
   list.innerHTML = days.map(day => `
     <div class="card day-card" data-id="${day.id}">
       <div class="day-head">
-        <input type="text" value="יום ${day.num} ${day.city?'· '+day.city:''}" placeholder="עיר..." data-field="city" data-id="${day.id}" onfocus="this.value='${day.city}'" onblur="if(!this.value){this.value=''}" />
-        <span class="muted" style="font-size:11px">${day.date}</span>
+        <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0;">
+          <span style="font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:15.5px;color:var(--blue);white-space:nowrap;">יום ${day.num}</span>
+          <input type="text" value="${escapeHtml(day.city)}" placeholder="עיר..." data-field="city" data-id="${day.id}"
+            style="border:none;background:none;font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:15.5px;color:var(--blue);padding:0 4px;min-width:0;flex:1;" />
+        </div>
+        <span class="muted" style="font-size:11px;white-space:nowrap;margin-right:6px;">${day.date}</span>
       </div>
       <div class="block-label">בוקר</div>
-      <textarea data-field="morning" data-id="${day.id}" placeholder="פעילות בוקר...">${day.morning}</textarea>
+      <textarea data-field="morning" data-id="${day.id}" placeholder="פעילות בוקר...">${escapeHtml(day.morning)}</textarea>
       <div class="block-label">צהריים</div>
-      <textarea data-field="noon" data-id="${day.id}" placeholder="פעילות צהריים...">${day.noon}</textarea>
+      <textarea data-field="noon" data-id="${day.id}" placeholder="פעילות צהריים...">${escapeHtml(day.noon)}</textarea>
       <div class="block-label">ערב</div>
-      <textarea data-field="evening" data-id="${day.id}" placeholder="פעילות ערב...">${day.evening}</textarea>
+      <textarea data-field="evening" data-id="${day.id}" placeholder="פעילות ערב...">${escapeHtml(day.evening)}</textarea>
     </div>
   `).join('');
   list.querySelectorAll('[data-field]').forEach(el=>{
@@ -467,16 +547,16 @@ RENDERERS.stay = async function(){
   main.innerHTML = `
     <div class="section-title">✈️ טיסות</div>
     <div class="info-box">
-      <b>הלוך — ${s.flights.out.num}</b><br>
-      ${s.flights.out.date}<br>
-      המראה: ${s.flights.out.dep}<br>
-      נחיתה: ${s.flights.out.arr}
+      <b>הלוך — ${escapeHtml(s.flights.out.num)}</b><br>
+      ${escapeHtml(s.flights.out.date)}<br>
+      המראה: ${escapeHtml(s.flights.out.dep)}<br>
+      נחיתה: ${escapeHtml(s.flights.out.arr)}
     </div>
     <div class="info-box">
-      <b>חזור — ${s.flights.back.num}</b><br>
-      ${s.flights.back.date}<br>
-      המראה: ${s.flights.back.dep}<br>
-      נחיתה: ${s.flights.back.arr}
+      <b>חזור — ${escapeHtml(s.flights.back.num)}</b><br>
+      ${escapeHtml(s.flights.back.date)}<br>
+      המראה: ${escapeHtml(s.flights.back.dep)}<br>
+      נחיתה: ${escapeHtml(s.flights.back.arr)}
     </div>
     <div class="warn-box">${escapeHtml(s.flights.note)}</div>
 
@@ -501,15 +581,21 @@ RENDERERS.stay = async function(){
    KOSHER & SHABBAT
 ================================================================= */
 RENDERERS.kosher = async function(){
-  const kosherSpots = await loadKey('kosher-spots', [
-    {id:uid(), city:"רומא (הגטו היהודי)", name:"BaGhetto Ristorante / Pastry Bistrot", note:"מסעדה כשרה + בית קפה, מטבח יהודי-רומאי"},
-    {id:uid(), city:"רומא (הגטו היהודי)", name:"BellaCarne Kosher Restaurant", note:"מסעדת בשרים כשרה"},
-    {id:uid(), city:"רומא (הגטו היהודי)", name:"Bona | Pizza", note:"פיצה כשרה (סניף הגטו בלבד כשר)"},
-    {id:uid(), city:"רומא (הגטו היהודי)", name:"Pasticceria Boccione", note:"מאפיית בוטיק יהודית-רומאית ותיקה"},
-  ]);
-  const syns = await loadKey('synagogues', [
-    {id:uid(), name:"Tempio Maggiore di Roma (בית הכנסת הגדול)", address:"Lungotevere de' Cenci, 00186 Roma", phone:"+39 06 6840 0651"},
-  ]);
+  let kosherSpots = await loadKey('kosher-spots', null);
+  if(!kosherSpots){
+    kosherSpots = [
+      {id:uid(), city:"רומא (הגטו היהודי)", name:"BaGhetto Ristorante / Pastry Bistrot", note:"מסעדה כשרה + בית קפה, מטבח יהודי-רומאי"},
+      {id:uid(), city:"רומא (הגטו היהודי)", name:"BellaCarne Kosher Restaurant", note:"מסעדת בשרים כשרה"},
+      {id:uid(), city:"רומא (הגטו היהודי)", name:"Bona | Pizza", note:"פיצה כשרה (סניף הגטו בלבד כשר)"},
+      {id:uid(), city:"רומא (הגטו היהודי)", name:"Pasticceria Boccione", note:"מאפיית בוטיק יהודית-רומאית ותיקה"},
+    ];
+    if(!cache.kosherSpotsInit){ await saveKey('kosher-spots', kosherSpots); cache.kosherSpotsInit=true; }
+  }
+  let syns = await loadKey('synagogues', null);
+  if(!syns){
+    syns = [{id:uid(), name:"Tempio Maggiore di Roma (בית הכנסת הגדול)", address:"Lungotevere de' Cenci, 00186 Roma", phone:"+39 06 6840 0651"}];
+    if(!cache.synsInit){ await saveKey('synagogues', syns); cache.synsInit=true; }
+  }
   const main = document.getElementById('main-content');
   main.innerHTML = `
     <div class="section-title">🕯️ שבת בטיול</div>
@@ -949,6 +1035,15 @@ async function delBoard(id){
   await saveKey('board', board);
   RENDERERS.board();
 }
+
+/* ---------- auto-login on refresh ---------- */
+(function(){
+  if(sessionStorage.getItem('trip-auth')==='1'){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    boot();
+  }
+})();
 
 </script>
 </body>
