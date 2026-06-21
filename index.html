@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#1B4B6F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="אנגל באיטליה">
+<meta name="apple-mobile-web-app-title" content="אנגל באומבריה">
 <link rel="manifest" href="manifest.json">
-<title>משפחת אנגל באיטליה — קיץ תשפ"ו</title>
+<title>משפחת אנגל — טיול לאומבריה · קיץ תשפ"ו</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
 
@@ -155,7 +155,7 @@ footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
 <!-- ============ LOGIN ============ -->
 <div id="login-screen">
   <div class="login-box">
-    <h1>משפחת אנגל באיטליה</h1>
+    <h1>משפחת אנגל — טיול לאומבריה</h1>
     <div style="font-size:12px;color:#999;margin-bottom:6px;">קיץ תשפ"ו</div>
     <p>הזינו את קוד הגישה המשפחתי</p>
     <input id="code-input" type="text" inputmode="numeric" maxlength="6" placeholder="••••">
@@ -170,7 +170,7 @@ footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
     <header class="top">
       <div class="brand">
         <div>
-          <h1>משפחת אנגל באיטליה</h1>
+          <h1>משפחת אנגל — טיול לאומבריה</h1>
           <div class="sub">קיץ תשפ"ו · 29.7–5.8.2026 · אומבריה, איטליה</div>
         </div>
         <button class="lock" title="נעילה" onclick="logout()">🔒</button>
@@ -216,6 +216,7 @@ const TABS = [
   {id:"stay", ic:"✈️", label:"לינה וטיסות"},
   {id:"kosher", ic:"🍽️", label:"כשרות ושבת"},
   {id:"villa-kosher", ic:"🏡", label:"כשרות ליד הווילה"},
+  {id:"villa-attractions", ic:"🏛️", label:"אטרקציות"},
   {id:"packing", ic:"🎒", label:"אריזה"},
   {id:"tasks", ic:"✅", label:"מטלות"},
   {id:"preflight", ic:"🧳", label:"הכנות לטיסה"},
@@ -735,6 +736,120 @@ RENDERERS["villa-kosher"] = async function(){
       <b>שימו לב ללחם:</b> ה"פניני" (panini) המקומי דורש בדיקה שאינו מכיל שומן מן החי (struto) ושהתבניות לא משומנות במרגרינה — שווה לשאול במאפייה או להביא לחם מרומא.
     </div>
     <p class="muted">למידע מורחב על כשרות באיטליה — ראו את הטאב "כשרות ושבת".</p>
+  `;
+};
+
+/* =================================================================
+   VILLA ATTRACTIONS
+================================================================= */
+RENDERERS["villa-attractions"] = async function(){
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">🏛️ אטרקציות קרובות לווילה</div>
+    <div class="warn-box" style="margin-bottom:14px;">
+      הווילה ממוקמת באוטריקולי, אומבריה — אזור עשיר בטבע, היסטוריה ותרבות. כל האטרקציות להלן מתאימות למגוון גילאים ☀️
+    </div>
+
+    <div class="section-title">⚡ קרוב מאוד (עד 15 ק"מ)</div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--terracotta);">
+      <b>🏛️ אוטריקולי (Otricoli) — העיירה שלנו</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~1 ק"מ</span><br>
+      עיירה מעוטרת ימי-ביניימית עם חזות עתיקה ונוף מרהיב על נהר הטיבר. מתאים לטיול רגלי קצר, קפה וגלידה.<br>
+      <span class="muted">⏱ 1–2 שעות · כל הגילאים · חינם</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--terracotta);">
+      <b>🏟️ חורבות אוטריקולי הרומית (Ocriculum)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~2 ק"מ</span><br>
+      שרידי עיר רומית קדומה עם אמפיתאטרון, מרחצאות ופסיפסים. מקום מצוין להסביר לילדים על רומא העתיקה.<br>
+      <span class="muted">⏱ 1–2 שעות · מגיל 4+ · כניסה חינמית בדרך כלל</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--terracotta);">
+      <b>🏰 נארני (Narni)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~13 ק"מ</span><br>
+      עיר מימי-הביניים שעמדה ביסוד סיפור "נרניה" של C.S. Lewis. מצודה עתיקה, מנזר תת-קרקעי וחוויה קסומה לילדים ומבוגרים.<br>
+      <span class="muted">⏱ 2–3 שעות · כל הגילאים · כניסה למצודה/מנזר ~5€</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--terracotta);">
+      <b>🏛️ קרסולאה (Carsulae) — חורבות רומיות</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~15 ק"מ</span><br>
+      אחד האתרים הרומיים השמורים ביותר באומבריה — שערי ניצחון, מקדשים ובזיליקה בשדות פתוחים ירוקים. שקט ולא עמוס תיירים.<br>
+      <span class="muted">⏱ 1.5–2 שעות · מגיל 6+ · כניסה ~3€</span>
+    </div>
+
+    <div class="section-title">🚗 קצת יותר רחוק (15–50 ק"מ)</div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--mustard);">
+      <b>🌊 מפל מארמורה (Cascata delle Marmore)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~45 ק"מ</span><br>
+      אחד המפלים הגבוהים באירופה — 165 מטר גובה! הנה אחד מהאטרקציות המרשימות של אומבריה. יש שבילי הליכה בשכבות שונות. מפעילים את המפל בשעות קבועות — כדאי לבדוק לוח זמנים מראש.<br>
+      <span class="muted">⏱ 2–4 שעות · כל הגילאים · כניסה ~14€ מבוגר / ~7€ ילד</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--mustard);">
+      <b>🏙️ טרני (Terni)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~20 ק"מ</span><br>
+      העיר הגדולה הקרובה — קניות, סופרמרקטים, בתי קפה ופיאצה מרכזית. יש בה גם גלריית אמנות וארקדה קניות. מתאים לצרכים יומיומיים ולסיור עירוני.<br>
+      <span class="muted">⏱ 1–3 שעות · כל הגילאים · חינם (למעט קניות)</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--mustard);">
+      <b>🏔️ עמליה (Amelia)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~20 ק"מ</span><br>
+      עיירה עתיקה בראש גבעה עם חומות פולאיות מ-3000 שנה לפנה"ס — בין החומות הישנות ביותר בעולם. מרכז היסטורי קסום ונוף פנורמי.<br>
+      <span class="muted">⏱ 1.5–2 שעות · כל הגילאים · חינם</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--mustard);">
+      <b>🏊 אגם פידילוקו (Lago di Piediluco)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~40 ק"מ</span><br>
+      אגם ציורי ושקט ליד מפל מארמורה — אפשר לשכור סירות קיאקים, לשחות ולאכול דגים טריים על שפת האגם. מתאים מאוד לאחר ביקור במפל.<br>
+      <span class="muted">⏱ 2–3 שעות · כל הגילאים · שכירת סירה ~20€/שעה</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--mustard);">
+      <b>🎨 אורוויאטו (Orvieto)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~40 ק"מ</span><br>
+      עיר ימי-ביניים מרהיבה על סלע טוף. הקתדרלה (Duomo) עם ציורי הקיר עליה מהנפלאות באיטליה. יש גם "Orvieto Underground" — מנהרות תת-קרקעיות שמושכות ילדים. יין אורוויאטו מפורסם.<br>
+      <span class="muted">⏱ 3–4 שעות · כל הגילאים · כניסה לקתדרלה ~5€ / מנהרות ~7€</span>
+    </div>
+
+    <div class="section-title">✈️ יום טיול (50–90 ק"מ)</div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--cypress);">
+      <b>⛪ אסיזי (Assisi)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~80 ק"מ</span><br>
+      עיר מולדתו של פרנציסקוס הקדוש — בזיליקה מפורסמת עם ציורי גיוטו, רחובות מרוצפים אבן ונוף על עמק אומבריה. חוויה רוחנית ואמנותית עמוקה.<br>
+      <span class="muted">⏱ 4–6 שעות · כל הגילאים · כניסה לבזיליקה חינם (תרומה מקובלת)</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--cypress);">
+      <b>🎭 ספולטו (Spoleto)</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~55 ק"מ</span><br>
+      עיר מרהיבה עם מצודה רוקה אלבורנוצ'יאנה, גשר הגשרים (Ponte delle Torri) המרשים ותיאטרון רומי. אחת הערים היפות באומבריה.<br>
+      <span class="muted">⏱ 3–5 שעות · מגיל 6+ · כניסה למצודה ~8€</span>
+    </div>
+
+    <div class="card info-box" style="border-inline-start-color:var(--cypress);">
+      <b>🏛️ רומא — הגטו היהודי</b>
+      <span style="font-size:11px; color:#888; margin-right:8px;">~60 ק"מ</span><br>
+      לא רק כשרות — הגטו עצמו הוא שכונה היסטורית מרתקת. בית הכנסת הגדול, הארכיאולוגיה, הפורו רומנו ועוד. אפשר לשלב אכילה כשרה עם סיור.<br>
+      <span class="muted">⏱ יום מלא · כל הגילאים · כניסה לאתרים משתנה</span>
+    </div>
+
+    <div class="section-title">💡 טיפים לתכנון</div>
+    <div class="card">
+      <div style="font-size:13px; line-height:1.8; color:#444;">
+        🌡️ <b>חום:</b> אוגוסט חם מאוד (32–38°C) — תכננו פעילויות חיצוניות בבוקר ובערב. אחה"צ — בריכה בווילה!<br>
+        🚗 <b>נסיעה:</b> רוב האטרקציות נגישות ב-30–60 דקות. כביש A1 מחבר לרומא ולאורוויאטו.<br>
+        💧 <b>מפל מארמורה:</b> בדקו את לוח שעות הפעלת המפל באתר הרשמי לפני הנסיעה — המים לא זורמים כל הזמן.<br>
+        🎟️ <b>כרטיסים:</b> מומלץ להזמין מראש לאורוויאטו ואסיזי בעונת הקיץ.<br>
+        👶 <b>ילדים קטנים:</b> נארניה, מפל מארמורה ואגם פידילוקו הם הבחירות הכי מוצלחות.
+      </div>
+    </div>
   `;
 };
 
