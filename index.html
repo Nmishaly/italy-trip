@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>משפחת אנגל באיטליה — קיץ תשפ"ו</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
+
+:root{
+  --blue:#1B4B6F; --blue-dark:#123553; --cream:#FBF7E8; --mustard:#E8A33D;
+  --cypress:#2F6B4F; --terracotta:#C44536; --ink:#1A1A1A; --card:#FFFFFF;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Heebo',sans-serif; background:var(--cream); color:var(--ink); min-height:100vh;}
+button{font-family:'Heebo',sans-serif; cursor:pointer;}
+input,textarea,select{font-family:'Heebo',sans-serif;}
+
+/* ===== Login screen ===== */
+#login-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(160deg, var(--blue) 0%, var(--blue-dark) 100%);
+  padding:20px;
+}
+.login-box{
+  background:var(--cream); border-radius:22px; padding:36px 28px; max-width:380px; width:100%;
+  text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.login-box h1{font-family:'Frank Ruhl Libre',serif; font-weight:900; font-size:24px; color:var(--blue); margin-bottom:6px;}
+.login-box p{font-size:13px; color:#777; margin-bottom:22px;}
+.login-box input{
+  width:100%; padding:14px; border-radius:12px; border:2px solid #ddd; font-size:20px;
+  text-align:center; letter-spacing:6px; margin-bottom:14px;
+}
+.login-box input:focus{outline:none; border-color:var(--mustard);}
+.login-box button{
+  width:100%; padding:13px; border:none; border-radius:12px; background:var(--terracotta);
+  color:#fff; font-weight:700; font-size:15px;
+}
+.login-error{color:var(--terracotta); font-size:12.5px; min-height:18px; margin-top:8px;}
+
+/* ===== Tile pattern strip ===== */
+.tile-strip{
+  height:14px;
+  background-image:linear-gradient(135deg,var(--blue) 25%,transparent 25%),
+    linear-gradient(225deg,var(--blue) 25%,transparent 25%),
+    linear-gradient(45deg,var(--mustard) 25%,transparent 25%),
+    linear-gradient(315deg,var(--mustard) 25%,transparent 25%);
+  background-position:14px 0,14px 0,0 0,0 0; background-size:14px 14px; background-repeat:repeat; opacity:.85;
+}
+
+/* ===== App shell ===== */
+#app{display:none;}
+.app{max-width:1100px; margin:0 auto; min-height:100vh; background:var(--cream); display:flex; flex-direction:column;}
+header.top{background:var(--blue); color:var(--cream); padding:20px 22px 22px; position:relative; overflow:hidden;}
+header.top::after{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 90% -10%, rgba(232,163,61,.25), transparent 55%);}
+.brand{display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1;}
+.brand h1{font-family:'Frank Ruhl Libre',serif; font-weight:900; font-size:22px;}
+.brand .sub{font-size:12.5px; opacity:.8; margin-top:2px; font-weight:300;}
+.brand .lock{background:rgba(255,255,255,.12); border:none; border-radius:50%; width:36px; height:36px; color:#fff; font-size:15px;}
+.countdown{margin-top:16px; position:relative; z-index:1; display:flex; gap:10px; align-items:flex-end;}
+.countdown .num{background:var(--mustard); color:var(--blue-dark); font-family:'Frank Ruhl Libre',serif; font-weight:900; font-size:30px; border-radius:13px; padding:7px 14px; line-height:1;}
+.countdown .lbl{font-size:11.5px; padding-bottom:8px; opacity:.85;}
+
+nav.top-nav{display:none;}
+main{flex:1; padding:18px 16px 90px;}
+.section-title{font-family:'Frank Ruhl Libre',serif; font-weight:700; font-size:18px; color:var(--blue); margin:18px 0 10px; display:flex; align-items:center; gap:8px;}
+.section-title:first-child{margin-top:0;}
+.section-title::before{content:""; width:5px; height:17px; background:var(--mustard); border-radius:3px; display:inline-block;}
+
+.card{background:var(--card); border-radius:16px; padding:14px 16px; margin-bottom:10px; box-shadow:0 2px 10px rgba(27,75,111,.07); border:1px solid rgba(27,75,111,.06);}
+
+nav.bottom{position:sticky; bottom:0; background:var(--card); border-top:1px solid rgba(27,75,111,.1); display:flex; justify-content:space-around; padding:7px 2px 9px; box-shadow:0 -4px 16px rgba(27,75,111,.08); z-index:50;}
+nav.bottom .nitem{display:flex; flex-direction:column; align-items:center; gap:2px; font-size:9.5px; color:#9aa6ad; width:44px; background:none; border:none; padding:4px 0;}
+nav.bottom .nitem.active{color:var(--blue); font-weight:700;}
+nav.bottom .nitem .ic{font-size:18px;}
+
+/* more-sheet for mobile */
+#more-sheet{display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:100;}
+#more-sheet .sheet{position:absolute; bottom:0; left:0; right:0; background:var(--cream); border-radius:20px 20px 0 0; padding:18px; max-width:1100px; margin:0 auto;}
+#more-sheet .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px;}
+#more-sheet .opt{background:var(--card); border-radius:14px; padding:14px 6px; text-align:center; font-size:11.5px; font-weight:600; color:var(--blue-dark); border:none;}
+#more-sheet .opt .ic{font-size:22px; display:block; margin-bottom:6px;}
+#more-sheet .close{display:block; width:100%; text-align:center; padding:10px; margin-top:14px; background:none; border:none; color:#999; font-size:13px;}
+
+@media (min-width:760px){
+  .app{border-radius:22px; margin:20px auto; overflow:hidden; min-height:auto; box-shadow:0 0 60px rgba(27,75,111,.1);}
+  header.top{padding:24px 36px 20px;}
+  nav.bottom{display:none;}
+  #more-sheet{display:none !important;}
+  nav.top-nav{display:flex; gap:4px; background:var(--blue-dark); padding:0 28px; overflow-x:auto;}
+  nav.top-nav .nitem{color:rgba(255,255,255,.6); font-size:12.5px; padding:12px 13px; display:flex; align-items:center; gap:5px; border-bottom:3px solid transparent; cursor:pointer; white-space:nowrap; background:none; border-top:none; border-right:none; border-left:none;}
+  nav.top-nav .nitem.active{color:#fff; border-bottom:3px solid var(--mustard); font-weight:600;}
+  main{padding:24px 36px 40px;}
+}
+
+/* ===== generic form bits ===== */
+.row{display:flex; gap:8px; margin-bottom:8px; align-items:center;}
+.row input[type=text], .row input[type=time], .row input[type=tel], .row select, textarea{
+  flex:1; padding:10px 12px; border:1.5px solid #e3e0d4; border-radius:10px; font-size:13.5px; background:#fff;
+}
+textarea{width:100%; min-height:54px; resize:vertical;}
+.btn{border:none; border-radius:10px; padding:9px 14px; font-size:13px; font-weight:600; color:#fff;}
+.btn-add{background:var(--cypress);}
+.btn-del{background:transparent; color:var(--terracotta); font-size:17px; padding:4px 8px;}
+.btn-save{background:var(--blue);}
+.pill{display:inline-block; background:var(--cream); border:1.5px solid var(--cypress); color:var(--cypress); font-size:11.5px; font-weight:600; border-radius:18px; padding:5px 11px; margin:3px 4px 3px 0;}
+.tag{font-size:10.5px; font-weight:700; color:#fff; border-radius:8px; padding:3px 8px; white-space:nowrap; display:inline-block; margin-left:6px;}
+.tag.morning{background:var(--cypress);} .tag.noon{background:var(--mustard); color:var(--blue-dark);} .tag.evening{background:var(--blue);}
+.checkrow{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f0ede0;}
+.checkrow:last-child{border-bottom:none;}
+.checkrow input[type=checkbox]{width:19px; height:19px; accent-color:var(--cypress); flex-shrink:0;}
+.checkrow.done span.txt{text-decoration:line-through; color:#aaa;}
+.checkrow span.txt{flex:1; font-size:13.5px;}
+.small-btn{background:none; border:none; color:var(--blue); font-size:12.5px; font-weight:600; padding:6px 0;}
+.muted{color:#999; font-size:12px;}
+.day-card{border-inline-start:5px solid var(--mustard);}
+.day-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+.day-head input{border:none; background:none; font-family:'Frank Ruhl Libre',serif; font-weight:700; font-size:15.5px; color:var(--blue); flex:1;}
+.block-label{font-size:11px; font-weight:700; color:#888; margin:8px 0 3px;}
+.note-card{display:flex; gap:10px;}
+.avatar{width:34px; height:34px; border-radius:50%; background:var(--cypress); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; font-size:12px;}
+.who{font-weight:700; font-size:12.5px; color:var(--blue-dark);}
+.txt2{font-size:13px; color:#444; margin-top:2px; white-space:pre-wrap;}
+.time2{font-size:10.5px; color:#aaa; margin-top:3px;}
+.info-box{background:#fff; border-radius:14px; padding:14px; margin-bottom:10px; border-inline-start:4px solid var(--cypress); font-size:13px; line-height:1.7;}
+.info-box b{color:var(--blue-dark);}
+.warn-box{background:#fff8ec; border-inline-start:4px solid var(--mustard); border-radius:14px; padding:12px 14px; margin-bottom:10px; font-size:12.5px; color:#7a5a17;}
+.fam-select{display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; padding-bottom:4px;}
+.fam-select button{flex-shrink:0; background:#fff; border:1.5px solid #ddd; border-radius:14px; padding:8px 13px; font-size:12px; font-weight:600; color:#777;}
+.fam-select button.active{background:var(--blue); color:#fff; border-color:var(--blue);}
+a.link{color:var(--blue); font-weight:600;}
+.empty-hint{text-align:center; color:#bbb; font-size:12.5px; padding:18px 0;}
+footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>משפחת אנגל באיטליה</h1>
+    <div style="font-size:12px;color:#999;margin-bottom:6px;">קיץ תשפ"ו</div>
+    <p>הזינו את קוד הגישה המשפחתי</p>
+    <input id="code-input" type="text" inputmode="numeric" maxlength="6" placeholder="••••">
+    <button onclick="tryLogin()">כניסה</button>
+    <div class="login-error" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <div>
+          <h1>משפחת אנגל באיטליה</h1>
+          <div class="sub">קיץ תשפ"ו · 29.7–5.8.2026 · אומבריה, איטליה</div>
+        </div>
+        <button class="lock" title="נעילה" onclick="logout()">🔒</button>
+      </div>
+      <div class="countdown">
+        <div class="num" id="countdown-num">--</div>
+        <div class="lbl">ימים<br>לטיסה</div>
+      </div>
+    </header>
+
+    <nav class="top-nav" id="top-nav"></nav>
+    <div class="tile-strip"></div>
+
+    <main id="main-content"></main>
+
+    <footer class="appfoot">לה פאמיליה באיטליה · קוד גישה משפחתי בלבד</footer>
+
+    <nav class="bottom" id="bottom-nav"></nav>
+  </div>
+</div>
+
+<div id="more-sheet">
+  <div class="sheet">
+    <div class="section-title" style="margin:0 0 4px">עוד טאבים</div>
+    <div class="grid" id="more-grid"></div>
+    <button class="close" onclick="closeMore()">סגירה</button>
+  </div>
+</div>
+
+<script>
+const ACCESS_CODE = "1309";
+
+const TABS = [
+  {id:"home", ic:"🏠", label:"בית"},
+  {id:"itinerary", ic:"🗓️", label:"מסלול"},
+  {id:"places", ic:"📍", label:"מקומות"},
+  {id:"stay", ic:"✈️", label:"לינה וטיסות"},
+  {id:"kosher", ic:"🍽️", label:"כשרות ושבת"},
+  {id:"villa-kosher", ic:"🏡", label:"כשרות ליד הווילה"},
+  {id:"packing", ic:"🎒", label:"אריזה"},
+  {id:"tasks", ic:"✅", label:"מטלות"},
+  {id:"preflight", ic:"🧳", label:"הכנות לטיסה"},
+  {id:"contacts", ic:"📞", label:"אנשי קשר"},
+  {id:"board", ic:"📋", label:"לוח מודעות"},
+];
+const MOBILE_PRIMARY = ["home","itinerary","places","stay","kosher"];
+
+const FAMILIES = ["שלמה ונאוה אנגל","אלעד ועדי לוביץ'","נצר ונעמה משאלי","דניאל ומוריה אנגל","הלל אנגל"];
+
+const TRIP_START = new Date(2026,6,29); // Jul 29 2026
+const TRIP_END = new Date(2026,7,5); // Aug 5 2026
+
+let currentTab = "home";
+let cache = {};
+
+/* ---------- storage helpers (Firebase Realtime Database) ---------- */
+const FIREBASE_URL = "https://engel-italy-trip-default-rtdb.firebaseio.com";
+
+async function loadKey(key, fallback){
+  try{
+    const res = await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`);
+    if(!res.ok) return fallback;
+    const data = await res.json();
+    if(data === null || data === undefined) return fallback;
+    return data;
+  }catch(e){ console.error("load fail", key, e); return fallback; }
+}
+async function saveKey(key, value){
+  try{
+    await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(value)
+    });
+  }catch(e){ console.error("save fail", key, e); }
+}
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+/* ---------- auth ---------- */
+function tryLogin(){
+  const v = document.getElementById('code-input').value.trim();
+  if(v === ACCESS_CODE){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    boot();
+  } else {
+    document.getElementById('login-err').textContent = 'קוד שגוי, נסו שוב';
+  }
+}
+document.getElementById('code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+function logout(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('code-input').value='';
+}
+
+/* ---------- nav rendering ---------- */
+function buildNav(){
+  const topNav = document.getElementById('top-nav');
+  topNav.innerHTML = TABS.map(t=>`<button class="nitem ${t.id===currentTab?'active':''}" onclick="switchTab('${t.id}')">${t.ic} ${t.label}</button>`).join('');
+
+  const bottomNav = document.getElementById('bottom-nav');
+  let html = MOBILE_PRIMARY.map(id=>{
+    const t = TABS.find(x=>x.id===id);
+    return `<button class="nitem ${t.id===currentTab?'active':''}" onclick="switchTab('${t.id}')"><span class="ic">${t.ic}</span>${t.label}</button>`;
+  }).join('');
+  const isMoreActive = !MOBILE_PRIMARY.includes(currentTab);
+  html += `<button class="nitem ${isMoreActive?'active':''}" onclick="openMore()"><span class="ic">⋯</span>עוד</button>`;
+  bottomNav.innerHTML = html;
+}
+function openMore(){
+  const grid = document.getElementById('more-grid');
+  const others = TABS.filter(t=>!MOBILE_PRIMARY.includes(t.id));
+  grid.innerHTML = others.map(t=>`<button class="opt" onclick="switchTab('${t.id}'); closeMore();"><span class="ic">${t.ic}</span>${t.label}</button>`).join('');
+  document.getElementById('more-sheet').style.display='block';
+}
+function closeMore(){ document.getElementById('more-sheet').style.display='none'; }
+
+async function switchTab(id){
+  currentTab = id;
+  buildNav();
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div class="empty-hint">טוען…</div>';
+  const renderer = RENDERERS[id];
+  await renderer();
+}
+
+/* ---------- boot ---------- */
+function updateCountdown(){
+  const now = new Date();
+  const diff = Math.ceil((TRIP_START - now) / (1000*60*60*24));
+  document.getElementById('countdown-num').textContent = diff > 0 ? diff : (diff===0?'🎉':'בדרך');
+}
+
+async function boot(){
+  updateCountdown();
+  await switchTab('home');
+}
+
+/* =================================================================
+   HOME
+================================================================= */
+RENDERERS = {};
+RENDERERS.home = async function(){
+  const board = await loadKey('board', []);
+  const last2 = board.slice(-2).reverse();
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">⭐ גישה מהירה</div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:6px;">
+      ${[["itinerary","🗓️","מסלול"],["kosher","🍽️","כשרות"],["packing","🎒","אריזה"],["contacts","📞","קשר"]].map(([id,ic,lbl])=>
+        `<button class="card" style="text-align:center; border:none;" onclick="switchTab('${id}')"><div style="font-size:24px">${ic}</div><div style="font-size:11.5px; font-weight:600; color:var(--blue-dark); margin-top:4px;">${lbl}</div></button>`
+      ).join('')}
+    </div>
+
+    <div class="section-title">👨‍👩‍👧‍👦 מי בטיול</div>
+    <div class="card">${FAMILIES.map(f=>`<span class="pill">${f}</span>`).join('')}</div>
+
+    <div class="section-title">📋 עדכונים אחרונים</div>
+    ${last2.length? last2.map(n=>`
+      <div class="card note-card">
+        <div class="avatar">${n.author.slice(0,2)}</div>
+        <div><div class="who">${n.author}</div><div class="txt2">${escapeHtml(n.text)}</div><div class="time2">${n.time}</div></div>
+      </div>`).join('') : '<div class="card empty-hint">אין עדיין הודעות — הוסיפו אחת בלוח המודעות</div>'}
+    <button class="small-btn" onclick="switchTab('board')">לכל הלוח ←</button>
+  `;
+};
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* =================================================================
+   ITINERARY
+================================================================= */
+function defaultItinerary(){
+  const days=[]; let d = new Date(TRIP_START);
+  let i=1;
+  while(d <= TRIP_END){
+    days.push({id:uid(), num:i, date: d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'}), city:'', morning:'', noon:'', evening:''});
+    d.setDate(d.getDate()+1); i++;
+  }
+  return days;
+}
+RENDERERS.itinerary = async function(){
+  const days = await loadKey('itinerary-days', null) || defaultItinerary();
+  if(!cache.itineraryInit){ await saveKey('itinerary-days', days); cache.itineraryInit = true; }
+  const main = document.getElementById('main-content');
+  main.innerHTML = `<div class="section-title">🗓️ המסלול היומי</div><div id="days-list"></div>
+    <p class="muted" style="margin-top:6px">כולם יכולים לערוך — השינויים נשמרים אוטומטית.</p>`;
+  const list = document.getElementById('days-list');
+  list.innerHTML = days.map(day => `
+    <div class="card day-card" data-id="${day.id}">
+      <div class="day-head">
+        <input type="text" value="יום ${day.num} ${day.city?'· '+day.city:''}" placeholder="עיר..." data-field="city" data-id="${day.id}" onfocus="this.value='${day.city}'" onblur="if(!this.value){this.value=''}" />
+        <span class="muted" style="font-size:11px">${day.date}</span>
+      </div>
+      <div class="block-label">בוקר</div>
+      <textarea data-field="morning" data-id="${day.id}" placeholder="פעילות בוקר...">${day.morning}</textarea>
+      <div class="block-label">צהריים</div>
+      <textarea data-field="noon" data-id="${day.id}" placeholder="פעילות צהריים...">${day.noon}</textarea>
+      <div class="block-label">ערב</div>
+      <textarea data-field="evening" data-id="${day.id}" placeholder="פעילות ערב...">${day.evening}</textarea>
+    </div>
+  `).join('');
+  list.querySelectorAll('[data-field]').forEach(el=>{
+    el.addEventListener('change', async ()=>{
+      const id = el.dataset.id, field = el.dataset.field;
+      const arr = await loadKey('itinerary-days', days);
+      const d = arr.find(x=>x.id===id);
+      if(d){ d[field] = el.value; await saveKey('itinerary-days', arr); }
+    });
+  });
+};
+
+/* =================================================================
+   PLACES
+================================================================= */
+RENDERERS.places = async function(){
+  const places = await loadKey('places', []);
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">📍 מקומות לבקר</div>
+    <div class="card">
+      <div class="row"><input type="text" id="place-name" placeholder="שם המקום..."></div>
+      <div class="row"><input type="text" id="place-note" placeholder="הערה (אופציונלי)..."><button class="btn btn-add" onclick="addPlace()">הוספה</button></div>
+    </div>
+    <div id="places-list"></div>
+  `;
+  renderPlacesList(places);
+};
+function renderPlacesList(places){
+  const el = document.getElementById('places-list');
+  el.innerHTML = places.length? places.map(p=>`
+    <div class="card" style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div><b>${escapeHtml(p.name)}</b>${p.note?`<div class="muted" style="margin-top:3px">${escapeHtml(p.note)}</div>`:''}</div>
+      <button class="btn-del" onclick="delPlace('${p.id}')">✕</button>
+    </div>`).join('') : '<div class="card empty-hint">עדיין אין מקומות — הוסיפו את הראשון!</div>';
+}
+async function addPlace(){
+  const name = document.getElementById('place-name').value.trim();
+  const note = document.getElementById('place-note').value.trim();
+  if(!name) return;
+  const places = await loadKey('places', []);
+  places.push({id:uid(), name, note});
+  await saveKey('places', places);
+  RENDERERS.places();
+}
+async function delPlace(id){
+  let places = await loadKey('places', []);
+  places = places.filter(p=>p.id!==id);
+  await saveKey('places', places);
+  RENDERERS.places();
+}
+
+/* =================================================================
+   STAY & FLIGHTS
+================================================================= */
+function defaultStay(){
+  return {
+    flights:{
+      out:{num:"LY383", date:"29.7.2026 (ד׳)", dep:"18:00 · נתב״ג, טרמינל 3", arr:"20:40 · רומא פיומיצ'ינו, טרמינל 3"},
+      back:{num:"LY384", date:"5.8.2026 (ד׳) → נחיתה 6.8", dep:"21:50 · רומא פיומיצ'ינו, טרמינל 3", arr:"02:10 · נתב״ג, טרמינל 3"},
+      note:"קוד הזמנה: WIACOL · חברת אל על"
+    },
+    villa:{
+      name:"Villa La Corona — בית חווה איטלקי משופץ באומבריה",
+      address:"Strada Vallefigliola s/n, Otricoli, אומבריה 05030, איטליה",
+      checkin:"29.7, משעה 15:00", checkout:"5.8, עד 10:00",
+      conf:"HMP9PQCYWP", host:"אלנה (מגיבה תוך כשעה)",
+      details:"6 חדרי שינה · 14 מיטות · 4 חדרי רחצה · גינה 4,000 מ״ר · בריכה פרטית 14x7 · כ-60 ק״מ מרומא",
+      warn:"⚠️ אין גלאי עשן בנכס (לפי המארחת) — שימו לב לבטיחות, יש גלאי פחמן חד-חמצני.",
+      link:"https://he.airbnb.com/rooms/439805"
+    }
+  };
+}
+RENDERERS.stay = async function(){
+  const s = await loadKey('stay-flights', null) || defaultStay();
+  if(!cache.stayInit){ await saveKey('stay-flights', s); cache.stayInit = true; }
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">✈️ טיסות</div>
+    <div class="info-box">
+      <b>הלוך — ${s.flights.out.num}</b><br>
+      ${s.flights.out.date}<br>
+      המראה: ${s.flights.out.dep}<br>
+      נחיתה: ${s.flights.out.arr}
+    </div>
+    <div class="info-box">
+      <b>חזור — ${s.flights.back.num}</b><br>
+      ${s.flights.back.date}<br>
+      המראה: ${s.flights.back.dep}<br>
+      נחיתה: ${s.flights.back.arr}
+    </div>
+    <div class="warn-box">${escapeHtml(s.flights.note)}</div>
+
+    <div class="section-title">🏡 הווילה</div>
+    <div class="info-box">
+      <b>${escapeHtml(s.villa.name)}</b><br>
+      ${escapeHtml(s.villa.address)}<br><br>
+      צ'ק-אין: ${s.villa.checkin} · צ'ק-אאוט: ${s.villa.checkout}<br>
+      קוד אישור: ${s.villa.conf}<br>
+      מארחת: ${escapeHtml(s.villa.host)}<br><br>
+      ${escapeHtml(s.villa.details)}<br><br>
+      <a class="link" href="${s.villa.link}" target="_blank">צפייה בעמוד הנכס באירבנב ↗</a>
+    </div>
+    <div class="warn-box">${escapeHtml(s.villa.warn)}</div>
+  `;
+};
+
+/* =================================================================
+   KOSHER & SHABBAT
+================================================================= */
+RENDERERS.kosher = async function(){
+  const kosherSpots = await loadKey('kosher-spots', [
+    {id:uid(), city:"רומא (הגטו היהודי)", name:"BaGhetto Ristorante / Pastry Bistrot", note:"מסעדה כשרה + בית קפה, מטבח יהודי-רומאי"},
+    {id:uid(), city:"רומא (הגטו היהודי)", name:"BellaCarne Kosher Restaurant", note:"מסעדת בשרים כשרה"},
+    {id:uid(), city:"רומא (הגטו היהודי)", name:"Bona | Pizza", note:"פיצה כשרה (סניף הגטו בלבד כשר)"},
+    {id:uid(), city:"רומא (הגטו היהודי)", name:"Pasticceria Boccione", note:"מאפיית בוטיק יהודית-רומאית ותיקה"},
+  ]);
+  const syns = await loadKey('synagogues', [
+    {id:uid(), name:"Tempio Maggiore di Roma (בית הכנסת הגדול)", address:"Lungotevere de' Cenci, 00186 Roma", phone:"+39 06 6840 0651"},
+  ]);
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">🕯️ שבת בטיול</div>
+    <div class="info-box">
+      הטיול כולל שבת אחת: <b>יום שישי 31.7 – שבת 1.8.2026</b><br>
+      הדלקת נרות ברומא/אומבריה: <b>סביב 20:15–20:20</b> (הערכה לפי מגמת השנה — מומלץ לאמת זמן מדויק קרוב למועד באתר חב"ד או היכל שלמה).
+    </div>
+
+    <div class="section-title">🕍 בתי כנסת</div>
+    <div id="syn-list"></div>
+    <div class="card">
+      <div class="row"><input type="text" id="syn-name" placeholder="שם בית הכנסת..."></div>
+      <div class="row"><input type="text" id="syn-addr" placeholder="כתובת..."></div>
+      <div class="row"><input type="text" id="syn-phone" placeholder="טלפון..."><button class="btn btn-add" onclick="addSyn()">הוספה</button></div>
+    </div>
+
+    <div class="section-title">🍽️ אוכל כשר באיטליה</div>
+    <div id="kosher-list"></div>
+    <div class="card">
+      <div class="row"><input type="text" id="ks-city" placeholder="עיר..."></div>
+      <div class="row"><input type="text" id="ks-name" placeholder="שם המקום..."></div>
+      <div class="row"><input type="text" id="ks-note" placeholder="הערה..."><button class="btn btn-add" onclick="addKosherSpot()">הוספה</button></div>
+    </div>
+
+    <div class="section-title">🔍 חיפוש כשר לפי כתובת</div>
+    <div class="card">
+      <div class="row"><input type="text" id="addr-search" placeholder="הקלידו כתובת או עיר באיטליה..."></div>
+      <button class="btn btn-save" style="width:100%" onclick="searchKosherNear()">חיפוש "כשר" ב-Google Maps</button>
+      <p class="muted" style="margin-top:8px">פותח חיפוש ב-Google Maps בכרטיסייה חדשה — שימו לב לבדוק תעודת הכשר בפועל במקום.</p>
+    </div>
+
+    <div class="section-title">📖 עיקרי המדריך של צהר</div>
+    <div class="info-box">
+      <b>התארגנות:</b> תיאום מראש לארוחות בטיסה, בירור עם קהילה מקומית, ובדיקת חומרי גלם מראש עדיפים על אילתור במקום.<br><br>
+      <b>בטיסה:</b> מותר וודקה אסור, בירה ווויסקי מותרים ללא הכשר. יש לוודא הזמנת ארוחה כשרה 48 שעות מראש ובשעת הכרטוס, ולבדוק שהיא מגיעה סגורה וחתומה.<br><br>
+      <b>לחם באיטליה:</b> יש לבדוק שה"פניני" (panini) במאפיות אינו מכיל שומן מן החי (struto) ושהתבניות אינן משומנות במרגרינה.<br><br>
+      <b>חלב וחמאה:</b> באיטליה (כמו בכל מדינות האיחוד האירופי) ניתן להקל בחלב סתם ובחמאה ללא תוספות — אך גבינות קשות/חצי קשות (מוצרלה, פרמזן וכד') דורשות הכשר.<br><br>
+      <b>קפה ותה:</b> קפוצ'ינו, אספרסו ואמריקנו מותרים ללא הכשר; תה שחור/ירוק/לבן טהור מותר. יש להימנע מתה פירות/בטעמים ומאייס-קפה ללא הכשר.<br><br>
+      <b>מסעדה צמחונית:</b> אפשרות אחרונה בלבד — סלט ירקות חיים עם שמן זית ולימון, ללא רטבים/חומץ, ובכלים שלא בושל בהם איסור.<br><br>
+      <b>מוצרים בסיסיים שניתן לקנות גם ללא הכשר:</b> סלמון מעושן (מאריזת ואקום), טחינה גולמית, שמן זית Extra Virgin, פסטה יבשה רגילה, ירקות קפואים (לא צ'יפס), חלב סויה ללא תוספת.
+    </div>
+    <p class="muted">המידע מבוסס על חוברת "צהר לכשרות בחו"ל" — לכל שאלה הלכתית פנו לרב.</p>
+  `;
+  renderSynList(syns);
+  renderKosherList(kosherSpots);
+};
+function renderSynList(syns){
+  document.getElementById('syn-list').innerHTML = syns.map(s=>`
+    <div class="card" style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div><b>${escapeHtml(s.name)}</b><div class="muted" style="margin-top:3px">${escapeHtml(s.address)}${s.phone?' · '+escapeHtml(s.phone):''}</div></div>
+      <button class="btn-del" onclick="delSyn('${s.id}')">✕</button>
+    </div>`).join('');
+}
+function renderKosherList(spots){
+  const byCity = {};
+  spots.forEach(s=>{ (byCity[s.city]=byCity[s.city]||[]).push(s); });
+  let html = '';
+  Object.keys(byCity).forEach(city=>{
+    html += `<div style="font-weight:700; font-size:12.5px; color:var(--blue-dark); margin:8px 0 4px;">${escapeHtml(city)}</div>`;
+    html += byCity[city].map(s=>`
+      <div class="card" style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div><b>${escapeHtml(s.name)}</b>${s.note?`<div class="muted" style="margin-top:3px">${escapeHtml(s.note)}</div>`:''}</div>
+        <button class="btn-del" onclick="delKosherSpot('${s.id}')">✕</button>
+      </div>`).join('');
+  });
+  document.getElementById('kosher-list').innerHTML = html || '<div class="card empty-hint">אין עדיין מקומות</div>';
+}
+async function addSyn(){
+  const name = document.getElementById('syn-name').value.trim();
+  const address = document.getElementById('syn-addr').value.trim();
+  const phone = document.getElementById('syn-phone').value.trim();
+  if(!name) return;
+  const syns = await loadKey('synagogues', []);
+  syns.push({id:uid(), name, address, phone});
+  await saveKey('synagogues', syns);
+  RENDERERS.kosher();
+}
+async function delSyn(id){
+  let syns = await loadKey('synagogues', []);
+  syns = syns.filter(s=>s.id!==id);
+  await saveKey('synagogues', syns);
+  RENDERERS.kosher();
+}
+async function addKosherSpot(){
+  const city = document.getElementById('ks-city').value.trim() || 'כללי';
+  const name = document.getElementById('ks-name').value.trim();
+  const note = document.getElementById('ks-note').value.trim();
+  if(!name) return;
+  const spots = await loadKey('kosher-spots', []);
+  spots.push({id:uid(), city, name, note});
+  await saveKey('kosher-spots', spots);
+  RENDERERS.kosher();
+}
+async function delKosherSpot(id){
+  let spots = await loadKey('kosher-spots', []);
+  spots = spots.filter(s=>s.id!==id);
+  await saveKey('kosher-spots', spots);
+  RENDERERS.kosher();
+}
+function searchKosherNear(){
+  const addr = document.getElementById('addr-search').value.trim();
+  if(!addr) return;
+  const url = `https://www.google.com/maps/search/${encodeURIComponent('kosher restaurant near '+addr)}`;
+  window.open(url, '_blank');
+}
+
+/* =================================================================
+   KOSHER NEAR THE VILLA
+================================================================= */
+RENDERERS["villa-kosher"] = async function(){
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">🏡 כשרות בסביבת הווילה</div>
+    <div class="warn-box">
+      הווילה נמצאת באוטריקולי שבאומבריה — אזור כפרי, ללא מסעדות או השגחת כשרות במרחק הליכה. כדאי להתארגן מראש (קנייה ברומא בדרך, או בישול עצמי בווילה).
+    </div>
+
+    <div class="section-title">🍝 מסעדות כשרות הכי קרובות</div>
+    <div class="info-box">
+      <b>הגטו היהודי, רומא</b> — כ-60 ק"מ / כ-50 דקות נסיעה מהווילה (דרך A1).<br><br>
+      • BaGhetto Ristorante Kosher — מטבח יהודי-רומאי<br>
+      • BellaCarne Kosher Restaurant — מסעדת בשרים<br>
+      • Bona | Pizza — פיצה כשרה (סניף הגטו בלבד)<br>
+      • Pasticceria Boccione — מאפיית בוטיק ותיקה<br><br>
+      <span class="muted">טיפ: שווה לתכנן עצירה בגטו ביום ההגעה/היציאה מרומא ולקנות מצרכים לכל השהייה בווילה.</span>
+    </div>
+
+    <div class="section-title">🛒 בישול עצמי בווילה</div>
+    <div class="info-box">
+      בווילה <b>שני מטבחים</b> (קומת קרקע + מטבחון בכל סוויטה בקומה א') — אפשרות נוחה לבשל לבד לאורך כל השהייה.<br><br>
+      <b>סופרמרקט קרוב:</b> Conad, Via del Parco 1/A, Narni Scalo — כ-13 ק"מ מהווילה.<br>
+      מוצרים נוספים זמינים גם ב-Conad/Coop בעמליה ובטרני (כ-9–20 ק"מ).<br><br>
+      <b>מוצרים שניתן לקנות ללא הכשר מיוחד</b> (לפי מדריך צהר): שמן זית Extra Virgin, פסטה יבשה רגילה (לא ממולאת), טחינה גולמית ללא תוספות, ירקות/פירות טריים, ירקות קפואים (לא צ'יפס), קטניות ואורז, חלב סויה ללא תוספת, ריבות שאינן אדומות.<br><br>
+      <b>שימו לב ללחם:</b> ה"פניני" (panini) המקומי דורש בדיקה שאינו מכיל שומן מן החי (struto) ושהתבניות לא משומנות במרגרינה — שווה לשאול במאפייה או להביא לחם מרומא.
+    </div>
+    <p class="muted">למידע מורחב על כשרות באיטליה — ראו את הטאב "כשרות ושבת".</p>
+  `;
+};
+
+/* =================================================================
+   PACKING
+================================================================= */
+function defaultSharedPacking(){
+  return ["שקית כלים חד-פעמיים + סכו״ם", "נייר כסף ומגבונים לחים", "תרופות בסיסיות וערכת עזרה ראשונה", "מתאם חשמל לאיטליה", "סבון/אבקת כביסה קטנה", "כדורי אגירה / מטען נייד"]
+    .map(t=>({id:uid(), text:t, done:false}));
+}
+function defaultPersonalPacking(){ return ["דרכון", "מטען טלפון", "כובע/משקפי שמש", "בגד ים", "תרופות אישיות"].map(t=>({id:uid(),text:t,done:false})); }
+
+RENDERERS.packing = async function(){
+  const shared = await loadKey('packing-shared', null) || defaultSharedPacking();
+  if(!cache.packInit){ await saveKey('packing-shared', shared); cache.packInit=true; }
+  const personalAll = await loadKey('packing-personal', {});
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">🎒 רשימה משותפת (למשפחה כולה)</div>
+    <div class="card"><div id="shared-list"></div>
+      <div class="row" style="margin-top:8px"><input type="text" id="shared-new" placeholder="הוספת פריט..."><button class="btn btn-add" onclick="addShared()">+</button></div>
+    </div>
+
+    <div class="section-title">🧍 רשימה אישית</div>
+    <div class="fam-select" id="person-select"></div>
+    <div class="card"><div id="personal-list"></div>
+      <div class="row" style="margin-top:8px"><input type="text" id="personal-new" placeholder="הוספת פריט..."><button class="btn btn-add" onclick="addPersonal()">+</button></div>
+    </div>
+  `;
+  renderCheckList('shared-list', shared, 'packing-shared');
+
+  const sel = document.getElementById('person-select');
+  if(!cache.currentPerson) cache.currentPerson = FAMILIES[0];
+  sel.innerHTML = FAMILIES.map(f=>`<button class="${f===cache.currentPerson?'active':''}" onclick="selectPerson('${f.replace(/'/g,"\\'")}')">${f}</button>`).join('');
+  renderPersonalList(personalAll);
+};
+function renderPersonalList(personalAll){
+  const list = personalAll[cache.currentPerson] || defaultPersonalPacking();
+  renderCheckList('personal-list', list, null, cache.currentPerson);
+}
+async function selectPerson(name){
+  cache.currentPerson = name;
+  await RENDERERS.packing();
+}
+function renderCheckList(elId, items, storageKey, personKey){
+  const el = document.getElementById(elId);
+  el.innerHTML = items.length ? items.map(it=>`
+    <div class="checkrow ${it.done?'done':''}">
+      <input type="checkbox" ${it.done?'checked':''} onchange="toggleCheck('${storageKey||'packing-personal'}','${it.id}', this.checked, ${personKey?`'${personKey.replace(/'/g,"\\'")}'`:'null'})">
+      <span class="txt">${escapeHtml(it.text)}</span>
+      <button class="btn-del" onclick="delCheck('${storageKey||'packing-personal'}','${it.id}', ${personKey?`'${personKey.replace(/'/g,"\\'")}'`:'null'})">✕</button>
+    </div>`).join('') : '<div class="empty-hint">הרשימה ריקה</div>';
+}
+async function toggleCheck(storageKey, id, checked, personKey){
+  if(storageKey==='packing-personal'){
+    const all = await loadKey('packing-personal', {});
+    const list = all[personKey] || defaultPersonalPacking();
+    const it = list.find(x=>x.id===id); if(it) it.done = checked;
+    all[personKey] = list; await saveKey('packing-personal', all);
+  } else {
+    const list = await loadKey(storageKey, []);
+    const it = list.find(x=>x.id===id); if(it) it.done = checked;
+    await saveKey(storageKey, list);
+  }
+}
+async function delCheck(storageKey, id, personKey){
+  if(storageKey==='packing-personal'){
+    const all = await loadKey('packing-personal', {});
+    let list = all[personKey] || [];
+    list = list.filter(x=>x.id!==id);
+    all[personKey]=list; await saveKey('packing-personal', all);
+    renderPersonalList(all);
+  } else {
+    let list = await loadKey(storageKey, []);
+    list = list.filter(x=>x.id!==id);
+    await saveKey(storageKey, list);
+    if(storageKey==='packing-shared') renderCheckList('shared-list', list, 'packing-shared');
+    if(storageKey==='tasks') RENDERERS.tasks();
+  }
+}
+async function addShared(){
+  const v = document.getElementById('shared-new').value.trim(); if(!v) return;
+  const list = await loadKey('packing-shared', []);
+  list.push({id:uid(), text:v, done:false});
+  await saveKey('packing-shared', list);
+  document.getElementById('shared-new').value='';
+  renderCheckList('shared-list', list, 'packing-shared');
+}
+async function addPersonal(){
+  const v = document.getElementById('personal-new').value.trim(); if(!v) return;
+  const all = await loadKey('packing-personal', {});
+  const list = all[cache.currentPerson] || defaultPersonalPacking();
+  list.push({id:uid(), text:v, done:false});
+  all[cache.currentPerson]=list;
+  await saveKey('packing-personal', all);
+  document.getElementById('personal-new').value='';
+  renderPersonalList(all);
+}
+
+/* =================================================================
+   TASKS
+================================================================= */
+RENDERERS.tasks = async function(){
+  const tasks = await loadKey('tasks', []);
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">✅ מטלות לפני הנסיעה</div>
+    <div class="card">
+      <div class="row"><input type="text" id="task-text" placeholder="מה צריך לעשות..."></div>
+      <div class="row">
+        <select id="task-owner"><option value="">מי אחראי? (אופציונלי)</option>${FAMILIES.map(f=>`<option>${f}</option>`).join('')}</select>
+        <button class="btn btn-add" onclick="addTask()">הוספה</button>
+      </div>
+    </div>
+    <div id="tasks-list"></div>
+  `;
+  renderTasksList(tasks);
+};
+function renderTasksList(tasks){
+  const el = document.getElementById('tasks-list');
+  el.innerHTML = tasks.length? tasks.map(t=>`
+    <div class="checkrow ${t.done?'done':''}" style="background:#fff; border-radius:14px; padding:10px 14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(27,75,111,.06);">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}', this.checked)">
+      <div style="flex:1">
+        <span class="txt">${escapeHtml(t.text)}</span>
+        ${t.owner?`<div class="muted" style="margin-top:2px">אחראי/ת: ${escapeHtml(t.owner)}</div>`:''}
+      </div>
+      <button class="btn-del" onclick="delCheck('tasks','${t.id}', null)">✕</button>
+    </div>`).join('') : '<div class="card empty-hint">אין מטלות עדיין</div>';
+}
+async function addTask(){
+  const text = document.getElementById('task-text').value.trim(); if(!text) return;
+  const owner = document.getElementById('task-owner').value;
+  const tasks = await loadKey('tasks', []);
+  tasks.push({id:uid(), text, owner, done:false});
+  await saveKey('tasks', tasks);
+  RENDERERS.tasks();
+}
+async function toggleTask(id, checked){
+  const tasks = await loadKey('tasks', []);
+  const t = tasks.find(x=>x.id===id); if(t) t.done = checked;
+  await saveKey('tasks', tasks);
+}
+
+/* =================================================================
+   PRE-FLIGHT CHECKLIST (per nuclear family)
+================================================================= */
+function defaultPreflightItems(){
+  return ["ביטוח נסיעות", "eSIM / חבילת גלישה בינ״ל", "צילום דרכונים + שמירה בענן", "בדיקת תוקף דרכונים (6 חודשים)", "תרופות + מרשמים לטיול", "הדפסת/שמירת כרטיסי טיסה", "מטענים ומתאמים לאיטליה"]
+    .map(t=>({id:uid(), text:t, done:false}));
+}
+RENDERERS.preflight = async function(){
+  const all = await loadKey('preflight', {});
+  if(!cache.currentPFFamily) cache.currentPFFamily = FAMILIES[0];
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">🧳 הכנות לפני הטיסה</div>
+    <p class="muted" style="margin-bottom:8px">צ'ק-ליסט נפרד לכל משפחה גרעינית</p>
+    <div class="fam-select" id="pf-select"></div>
+    <div class="card"><div id="pf-list"></div>
+      <div class="row" style="margin-top:8px"><input type="text" id="pf-new" placeholder="הוספת פריט..."><button class="btn btn-add" onclick="addPF()">+</button></div>
+    </div>
+  `;
+  document.getElementById('pf-select').innerHTML = FAMILIES.map(f=>`<button class="${f===cache.currentPFFamily?'active':''}" onclick="selectPF('${f.replace(/'/g,"\\'")}')">${f}</button>`).join('');
+  renderPFList(all);
+};
+function renderPFList(all){
+  const list = all[cache.currentPFFamily] || defaultPreflightItems();
+  renderCheckList('pf-list', list, null, '__PF__'+cache.currentPFFamily);
+}
+async function selectPF(name){ cache.currentPFFamily = name; const all = await loadKey('preflight', {}); renderPFList(all); document.getElementById('pf-select').innerHTML = FAMILIES.map(f=>`<button class="${f===cache.currentPFFamily?'active':''}" onclick="selectPF('${f.replace(/'/g,"\\'")}')">${f}</button>`).join(''); }
+async function addPF(){
+  const v = document.getElementById('pf-new').value.trim(); if(!v) return;
+  const all = await loadKey('preflight', {});
+  const list = all[cache.currentPFFamily] || defaultPreflightItems();
+  list.push({id:uid(), text:v, done:false});
+  all[cache.currentPFFamily]=list;
+  await saveKey('preflight', all);
+  document.getElementById('pf-new').value='';
+  renderPFList(all);
+}
+// override toggle/del for PF (personKey prefixed with __PF__)
+const _origToggleCheck = toggleCheck;
+toggleCheck = async function(storageKey, id, checked, personKey){
+  if(personKey && personKey.startsWith('__PF__')){
+    const fam = personKey.replace('__PF__','');
+    const all = await loadKey('preflight', {});
+    const list = all[fam] || [];
+    const it = list.find(x=>x.id===id); if(it) it.done = checked;
+    all[fam]=list; await saveKey('preflight', all);
+    return;
+  }
+  return _origToggleCheck(storageKey, id, checked, personKey);
+};
+const _origDelCheck = delCheck;
+delCheck = async function(storageKey, id, personKey){
+  if(personKey && personKey.startsWith('__PF__')){
+    const fam = personKey.replace('__PF__','');
+    const all = await loadKey('preflight', {});
+    let list = all[fam] || [];
+    list = list.filter(x=>x.id!==id);
+    all[fam]=list; await saveKey('preflight', all);
+    renderPFList(all);
+    return;
+  }
+  return _origDelCheck(storageKey, id, personKey);
+};
+
+/* =================================================================
+   CONTACTS
+================================================================= */
+function defaultContacts(){
+  return [
+    {id:uid(), name:"אלנה — מארחת הווילה", phone:"דרך Airbnb (קוד הזמנה HMP9PQCYWP)", note:"מגיבה תוך כשעה"},
+    {id:uid(), name:"שגרירות ישראל ברומא", phone:"+39 06 36198500", note:"Via Michele Mercati 14, Roma"},
+    {id:uid(), name:"מוקד חירום רפואי איטליה", phone:"112", note:"מספר חירום כללי באיטליה"},
+    {id:uid(), name:"Tempio Maggiore di Roma (בית כנסת)", phone:"+39 06 6840 0651", note:"Lungotevere de' Cenci, רומא"},
+  ];
+}
+RENDERERS.contacts = async function(){
+  const contacts = await loadKey('contacts', null) || defaultContacts();
+  if(!cache.contactsInit){ await saveKey('contacts', contacts); cache.contactsInit=true; }
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">📞 אנשי קשר חשובים</div>
+    <div id="contacts-list"></div>
+    <div class="card">
+      <div class="row"><input type="text" id="c-name" placeholder="שם..."></div>
+      <div class="row"><input type="text" id="c-phone" placeholder="טלפון..."></div>
+      <div class="row"><input type="text" id="c-note" placeholder="הערה..."><button class="btn btn-add" onclick="addContact()">הוספה</button></div>
+    </div>
+  `;
+  renderContactsList(contacts);
+};
+function renderContactsList(contacts){
+  document.getElementById('contacts-list').innerHTML = contacts.map(c=>`
+    <div class="card" style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div><b>${escapeHtml(c.name)}</b><div style="margin-top:3px; font-size:13px;">${escapeHtml(c.phone)}</div>${c.note?`<div class="muted" style="margin-top:2px">${escapeHtml(c.note)}</div>`:''}</div>
+      <button class="btn-del" onclick="delContact('${c.id}')">✕</button>
+    </div>`).join('');
+}
+async function addContact(){
+  const name = document.getElementById('c-name').value.trim();
+  const phone = document.getElementById('c-phone').value.trim();
+  const note = document.getElementById('c-note').value.trim();
+  if(!name) return;
+  const contacts = await loadKey('contacts', []);
+  contacts.push({id:uid(), name, phone, note});
+  await saveKey('contacts', contacts);
+  RENDERERS.contacts();
+}
+async function delContact(id){
+  let contacts = await loadKey('contacts', []);
+  contacts = contacts.filter(c=>c.id!==id);
+  await saveKey('contacts', contacts);
+  RENDERERS.contacts();
+}
+
+/* =================================================================
+   BOARD
+================================================================= */
+RENDERERS.board = async function(){
+  const board = await loadKey('board', []);
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="section-title">📋 לוח מודעות</div>
+    <div class="card">
+      <div class="row"><select id="b-author"><option value="">מי כותב? (שם)</option>${FAMILIES.map(f=>`<option>${f}</option>`).join('')}</select></div>
+      <div class="row"><textarea id="b-text" placeholder="כתבו הודעה לכל המשפחה..."></textarea></div>
+      <button class="btn btn-add" style="width:100%" onclick="addBoard()">פרסום הודעה</button>
+    </div>
+    <div id="board-list"></div>
+  `;
+  renderBoardList(board);
+};
+function renderBoardList(board){
+  const el = document.getElementById('board-list');
+  const rev = [...board].reverse();
+  el.innerHTML = rev.length ? rev.map(n=>`
+    <div class="card note-card">
+      <div class="avatar">${(n.author||'?').slice(0,2)}</div>
+      <div style="flex:1"><div class="who">${escapeHtml(n.author||'אנונימי')}</div><div class="txt2">${escapeHtml(n.text)}</div><div class="time2">${n.time}</div></div>
+      <button class="btn-del" onclick="delBoard('${n.id}')">✕</button>
+    </div>`).join('') : '<div class="card empty-hint">עדיין אין הודעות — היו הראשונים לכתוב!</div>';
+}
+async function addBoard(){
+  const author = document.getElementById('b-author').value || 'המשפחה';
+  const text = document.getElementById('b-text').value.trim();
+  if(!text) return;
+  const board = await loadKey('board', []);
+  board.push({id:uid(), author, text, time: new Date().toLocaleString('he-IL',{dateStyle:'short',timeStyle:'short'})});
+  await saveKey('board', board);
+  RENDERERS.board();
+}
+async function delBoard(id){
+  let board = await loadKey('board', []);
+  board = board.filter(n=>n.id!==id);
+  await saveKey('board', board);
+  RENDERERS.board();
+}
+
+</script>
+</body>
+</html>
