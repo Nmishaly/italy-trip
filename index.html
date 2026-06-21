@@ -58,6 +58,10 @@ header.top::after{content:"";position:absolute;inset:0;background-image:radial-g
 .brand h1{font-family:'Frank Ruhl Libre',serif; font-weight:900; font-size:22px;}
 .brand .sub{font-size:12.5px; opacity:.8; margin-top:2px; font-weight:300;}
 .brand .lock{background:rgba(255,255,255,.12); border:none; border-radius:50%; width:36px; height:36px; color:#fff; font-size:15px;}
+.fb-status{display:flex; align-items:center; gap:5px; font-size:11px; opacity:.85; margin-top:6px; position:relative; z-index:1;}
+.fb-dot{width:8px; height:8px; border-radius:50%; background:#aaa; flex-shrink:0; transition:background .4s;}
+.fb-dot.ok{background:#4caf7d;}
+.fb-dot.err{background:#e05a4b;}
 .countdown{margin-top:16px; position:relative; z-index:1; display:flex; gap:10px; align-items:flex-end;}
 .countdown .num{background:var(--mustard); color:var(--blue-dark); font-family:'Frank Ruhl Libre',serif; font-weight:900; font-size:30px; border-radius:13px; padding:7px 14px; line-height:1;}
 .countdown .lbl{font-size:11.5px; padding-bottom:8px; opacity:.85;}
@@ -163,6 +167,10 @@ footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
         <div class="num" id="countdown-num">--</div>
         <div class="lbl">ימים<br>לטיסה</div>
       </div>
+      <div class="fb-status">
+        <span class="fb-dot" id="fb-dot"></span>
+        <span id="fb-status-text">בודק חיבור…</span>
+      </div>
     </header>
 
     <nav class="top-nav" id="top-nav"></nav>
@@ -229,7 +237,28 @@ async function saveKey(key, value){
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(value)
     });
-  }catch(e){ console.error("save fail", key, e); }
+    setFbStatus(true);
+  }catch(e){ console.error("save fail", key, e); setFbStatus(false); }
+}
+
+function setFbStatus(ok){
+  const dot = document.getElementById('fb-dot');
+  const txt = document.getElementById('fb-status-text');
+  if(!dot) return;
+  dot.className = 'fb-dot ' + (ok ? 'ok' : 'err');
+  txt.textContent = ok ? 'מסונכרן עם Firebase' : 'אין חיבור לשרת';
+}
+
+async function checkFbConnection(){
+  try{
+    const res = await fetch(`${FIREBASE_URL}/.json?shallow=true`, {signal: AbortSignal.timeout(5000)});
+    setFbStatus(res.ok);
+  }catch(e){ setFbStatus(false); }
+}
+
+function openWazeToVilla(){
+  const address = encodeURIComponent('Strada Vallefigliola, Otricoli, Umbria, Italy');
+  window.open(`https://waze.com/ul?q=${address}&navigate=yes`, '_blank');
 }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
@@ -291,6 +320,8 @@ function updateCountdown(){
 
 async function boot(){
   updateCountdown();
+  checkFbConnection();
+  setInterval(checkFbConnection, 30000);
   await switchTab('home');
 }
 
@@ -459,6 +490,9 @@ RENDERERS.stay = async function(){
       ${escapeHtml(s.villa.details)}<br><br>
       <a class="link" href="${s.villa.link}" target="_blank">צפייה בעמוד הנכס באירבנב ↗</a>
     </div>
+    <button onclick="openWazeToVilla()" style="width:100%; padding:13px; border:none; border-radius:12px; background:#00c2ff; color:#fff; font-weight:700; font-size:15px; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+      🗺️ ניווט לווילה עם Waze
+    </button>
     <div class="warn-box">${escapeHtml(s.villa.warn)}</div>
   `;
 };
@@ -589,6 +623,9 @@ RENDERERS["villa-kosher"] = async function(){
   const main = document.getElementById('main-content');
   main.innerHTML = `
     <div class="section-title">🏡 כשרות בסביבת הווילה</div>
+    <button onclick="openWazeToVilla()" style="width:100%; padding:12px; border:none; border-radius:12px; background:#00c2ff; color:#fff; font-weight:700; font-size:14px; margin-bottom:10px; cursor:pointer;">
+      🗺️ ניווט לווילה עם Waze
+    </button>
     <div class="warn-box">
       הווילה נמצאת באוטריקולי שבאומבריה — אזור כפרי, ללא מסעדות או השגחת כשרות במרחק הליכה. כדאי להתארגן מראש (קנייה ברומא בדרך, או בישול עצמי בווילה).
     </div>
