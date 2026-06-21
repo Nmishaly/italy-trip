@@ -408,7 +408,7 @@ RENDERERS.home = async function(){
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 async function exportData(){
-  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','tasks','preflight','contacts'];
+  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','tasks','preflight','contacts','villa-attractions-custom'];
   const out = {};
   for(const k of keys){
     const v = await loadKey(k, null);
@@ -743,11 +743,30 @@ RENDERERS["villa-kosher"] = async function(){
    VILLA ATTRACTIONS
 ================================================================= */
 RENDERERS["villa-attractions"] = async function(){
+  const custom = await loadKey('villa-attractions-custom', []);
   const main = document.getElementById('main-content');
   main.innerHTML = `
     <div class="section-title">🏛️ אטרקציות קרובות לווילה</div>
     <div class="warn-box" style="margin-bottom:14px;">
       הווילה ממוקמת באוטריקולי, אומבריה — אזור עשיר בטבע, היסטוריה ותרבות. כל האטרקציות להלן מתאימות למגוון גילאים ☀️
+    </div>
+
+    <div class="section-title">⭐ האטרקציות שלנו</div>
+    <div id="custom-attractions-list"></div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <div style="font-weight:700; font-size:13.5px; color:var(--blue-dark); margin-bottom:10px;">➕ הוספת אטרקציה</div>
+      <div class="row"><input type="text" id="attr-name" placeholder="שם האטרקציה *"></div>
+      <div class="row">
+        <input type="text" id="attr-dist" placeholder='מרחק (למשל: ~30 ק"מ)' style="flex:1">
+        <input type="text" id="attr-duration" placeholder="זמן מומלץ (למשל: 2–3 שעות)" style="flex:1">
+      </div>
+      <div class="row"><textarea id="attr-desc" placeholder="תיאור קצר..." style="min-height:60px;"></textarea></div>
+      <div class="row">
+        <input type="text" id="attr-ages" placeholder="מתאים לגילאים (למשל: כל הגילאים / מגיל 6+)" style="flex:1">
+        <input type="text" id="attr-price" placeholder="מחיר כניסה (למשל: חינם / ~10€)" style="flex:1">
+      </div>
+      <button class="btn btn-add" style="width:100%; margin-top:4px;" onclick="addCustomAttraction()">הוספה לרשימה</button>
     </div>
 
     <div class="section-title">⚡ קרוב מאוד (עד 15 ק"מ)</div>
@@ -851,7 +870,61 @@ RENDERERS["villa-attractions"] = async function(){
       </div>
     </div>
   `;
+  renderCustomAttractions(custom);
 };
+
+function renderCustomAttractions(items){
+  const el = document.getElementById('custom-attractions-list');
+  if(!el) return;
+  if(!items.length){
+    el.innerHTML = '<div class="card empty-hint" style="margin-bottom:10px;">עדיין לא הוספתם אטרקציות — השתמשו בטופס למטה להוסיף המלצות משלכם!</div>';
+    return;
+  }
+  el.innerHTML = items.map(a => `
+    <div class="card" style="border-inline-start:4px solid var(--blue); margin-bottom:10px; position:relative;">
+      <button class="btn-del" onclick="delCustomAttraction('${a.id}')" style="position:absolute;top:10px;left:10px;">✕</button>
+      <div style="padding-left:28px;">
+        <b style="font-size:14px; color:var(--blue-dark);">${escapeHtml(a.name)}</b>
+        ${a.dist ? `<span style="font-size:11px; color:#888; margin-right:8px;">${escapeHtml(a.dist)}</span>` : ''}
+        ${a.desc ? `<div style="font-size:13px; color:#444; margin-top:5px; line-height:1.6;">${escapeHtml(a.desc)}</div>` : ''}
+        <div class="muted" style="margin-top:6px;">
+          ${a.duration ? `⏱ ${escapeHtml(a.duration)}` : ''}
+          ${a.duration && (a.ages || a.price) ? ' · ' : ''}
+          ${a.ages ? escapeHtml(a.ages) : ''}
+          ${a.ages && a.price ? ' · ' : ''}
+          ${a.price ? escapeHtml(a.price) : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function addCustomAttraction(){
+  const name = document.getElementById('attr-name').value.trim();
+  if(!name) return;
+  const item = {
+    id: uid(),
+    name,
+    dist:     document.getElementById('attr-dist').value.trim(),
+    duration: document.getElementById('attr-duration').value.trim(),
+    desc:     document.getElementById('attr-desc').value.trim(),
+    ages:     document.getElementById('attr-ages').value.trim(),
+    price:    document.getElementById('attr-price').value.trim(),
+  };
+  const list = await loadKey('villa-attractions-custom', []);
+  list.push(item);
+  await saveKey('villa-attractions-custom', list);
+  ['attr-name','attr-dist','attr-duration','attr-desc','attr-ages','attr-price'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  renderCustomAttractions(list);
+}
+
+async function delCustomAttraction(id){
+  let list = await loadKey('villa-attractions-custom', []);
+  list = list.filter(a => a.id !== id);
+  await saveKey('villa-attractions-custom', list);
+  renderCustomAttractions(list);
+}
 
 /* =================================================================
    PACKING
