@@ -304,12 +304,22 @@ label.lbl{font-size:11px; font-weight:700; color:var(--text-soft); margin-bottom
 a.link{color:var(--brand); font-weight:600;}
 
 /* notes / board */
-.note-card{display:flex; gap:11px;}
+.note-card{display:flex; gap:11px; flex-wrap:wrap;}
 .avatar{width:38px; height:38px; border-radius:12px; color:#fff; display:flex; align-items:center; justify-content:center;
   font-weight:800; flex-shrink:0; font-size:13px;}
 .who{font-weight:700; font-size:13px; color:var(--text);}
 .txt2{font-size:13.5px; color:var(--text-soft); margin-top:3px; white-space:pre-wrap; word-break:break-word;}
 .time2{font-size:10.5px; color:var(--text-mute); margin-top:4px;}
+.comments-section{width:100%; margin-top:8px; border-top:1px solid var(--border-soft); padding-top:9px;}
+.comment-item{display:flex; align-items:flex-start; gap:8px; padding:5px 0; border-bottom:1px solid var(--border-soft);}
+.comment-item:last-child{border-bottom:none;}
+.comment-avatar{width:28px; height:28px; border-radius:9px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; font-size:10px;}
+.comment-form{margin-top:8px; display:none;}
+.comment-form .cf-row{display:flex; gap:7px; flex-wrap:wrap; align-items:flex-end;}
+.comment-form select,.comment-form input[type=text]{padding:8px 11px; border:1.5px solid var(--border); border-radius:var(--r-sm); font-size:13px; background:var(--surface-2); color:var(--text); font-family:inherit;}
+.comment-form select:focus,.comment-form input[type=text]:focus{outline:none; border-color:var(--brand); background:var(--surface);}
+.comment-form select{flex:1; min-width:110px;}
+.comment-form input[type=text]{flex:2; min-width:140px;}
 
 /* itinerary */
 .day-card{border-inline-start:5px solid var(--accent);}
@@ -1749,15 +1759,38 @@ RENDERERS.board = async function(){
 };
 function renderBoardList(board){
   const rev = [...board].reverse();
-  el('board-list').innerHTML = rev.length ? rev.map(n=>`
-    <div class="card note-card">
+  el('board-list').innerHTML = rev.length ? rev.map(n=>{
+    const comments = n.comments || [];
+    const commentsHTML = comments.map(c=>`
+      <div class="comment-item">
+        <div class="comment-avatar" style="background:${famColor(c.author)}">${escapeHtml((c.author||'?').slice(0,2))}</div>
+        <div style="flex:1;min-width:0">
+          <span class="who" style="font-size:12px">${escapeHtml(c.author||'אנונימי')}</span>
+          <div class="txt2" style="font-size:12.5px;margin-top:1px">${escapeHtml(c.text)}</div>
+          <div class="time2">${escapeHtml(relTime(c.ts,''))}</div>
+        </div>
+        <button class="btn-del" style="font-size:12px;padding:3px 6px" aria-label="מחיקת תגובה" onclick="delComment('${q(n.id)}','${q(c.id)}')">✕</button>
+      </div>`).join('');
+    return `<div class="card note-card">
       <div class="avatar" style="background:${famColor(n.author)}">${escapeHtml((n.author||'?').slice(0,2))}</div>
       <div style="flex:1;min-width:0"><div class="who">${escapeHtml(n.author||'אנונימי')}</div><div class="txt2">${escapeHtml(n.text)}</div><div class="time2">${escapeHtml(relTime(n.ts, n.time))}</div></div>
       <div class="lc-actions">
-        <button class="btn-icon" title="עריכה" aria-label="עריכה" onclick="editBoard('${n.id}')">✏️</button>
-        <button class="btn-del" aria-label="מחיקה" onclick="delBoard('${n.id}')">✕</button>
+        <button class="btn-icon" title="עריכה" aria-label="עריכה" onclick="editBoard('${q(n.id)}')">✏️</button>
+        <button class="btn-del" aria-label="מחיקה" onclick="delBoard('${q(n.id)}')">✕</button>
       </div>
-    </div>`).join('') : '<div class="card empty-hint">עדיין אין הודעות — היו הראשונים לכתוב!</div>';
+      <div class="comments-section">
+        ${commentsHTML ? `<div class="comments-list" style="margin-bottom:7px">${commentsHTML}</div>` : ''}
+        <button class="small-btn" style="font-size:12px;color:var(--text-mute)" onclick="toggleCommentForm('${q(n.id)}')">💬 ${comments.length ? `${comments.length} תגובות · הוסף` : 'הוסף תגובה'}</button>
+        <div class="comment-form" id="cf-${n.id}">
+          <div class="cf-row">
+            <select id="ca-${n.id}"><option value="">שם המגיב</option>${FAMILIES.map(f=>`<option>${escapeHtml(f)}</option>`).join('')}</select>
+            <input type="text" id="ct-${n.id}" placeholder="כתבו תגובה..." maxlength="500" onkeydown="if(event.key==='Enter')addComment('${q(n.id)}')">
+            <button class="btn btn-save" style="padding:8px 13px;font-size:12.5px;white-space:nowrap" onclick="addComment('${q(n.id)}')">שלח 💬</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="card empty-hint">עדיין אין הודעות — היו הראשונים לכתוב!</div>';
 }
 async function addBoard(){
   const author = el('b-author').value || 'המשפחה';
@@ -1779,6 +1812,35 @@ async function delBoard(id){
   let board = await loadKey('board', []); board = board.filter(n=>n.id!==id);
   await saveKey('board', board);
   if(currentTab==='board') RENDERERS.board(); else RENDERERS.home();
+}
+function toggleCommentForm(noteId){
+  const form = el('cf-' + noteId);
+  if(!form) return;
+  const show = form.style.display === 'none' || form.style.display === '';
+  form.style.display = show ? 'block' : 'none';
+  if(show){ const inp = el('ct-' + noteId); if(inp) inp.focus(); }
+}
+async function addComment(noteId){
+  const authorEl = el('ca-' + noteId), textEl = el('ct-' + noteId);
+  if(!authorEl || !textEl) return;
+  const author = authorEl.value, text = textEl.value.trim();
+  if(!author){ alertModal('נא לבחור שם', '👤'); return; }
+  if(!text) return;
+  const board = await loadKey('board', []);
+  const note = board.find(n=>n.id===noteId);
+  if(!note) return;
+  if(!note.comments) note.comments = [];
+  note.comments.push({id:uid(), author, text, ts:Date.now()});
+  await saveKey('board', board);
+  RENDERERS.board();
+}
+async function delComment(noteId, commentId){
+  if(!(await confirmModal('למחוק את התגובה?'))) return;
+  const board = await loadKey('board', []);
+  const note = board.find(n=>n.id===noteId);
+  if(note && note.comments) note.comments = note.comments.filter(c=>c.id!==commentId);
+  await saveKey('board', board);
+  RENDERERS.board();
 }
 
 /* ---------- MEAL ROTA & KITCHEN SCHEDULE ---------- */
