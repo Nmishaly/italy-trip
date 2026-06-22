@@ -1,33 +1,27 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 @font-face {
-  font-family: 'Heebo';
+  font-family: 'AppFont';
   src: url('file:///usr/share/fonts/truetype/freefont/FreeSans.ttf') format('truetype');
   font-weight: 300 500;
 }
 @font-face {
-  font-family: 'Heebo';
+  font-family: 'AppFont';
   src: url('file:///usr/share/fonts/truetype/freefont/FreeSansBold.ttf') format('truetype');
   font-weight: 600 900;
-}
-@font-face {
-  font-family: 'Frank Ruhl Libre';
-  src: url('file:///usr/share/fonts/truetype/freefont/FreeSerifBold.ttf') format('truetype');
-  font-weight: 700 900;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Heebo', sans-serif;
+  font-family: 'AppFont', 'Liberation Sans', sans-serif;
   background: #0E1420;
   width: 1080px;
   min-height: 1350px;
-  direction: rtl;
   overflow: hidden;
 }
 
@@ -36,32 +30,21 @@ body {
   min-height: 1350px;
   background: linear-gradient(160deg, #0E1420 0%, #122035 40%, #0E1420 100%);
   position: relative;
-  padding: 0;
   overflow: hidden;
 }
 
-/* Background decorative elements */
 .bg-blob {
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
-  opacity: 0.25;
+  opacity: 0.22;
 }
 .bg-blob-1 { width: 500px; height: 500px; background: #1E86AE; top: -100px; right: -100px; }
 .bg-blob-2 { width: 400px; height: 400px; background: #F2A93B; bottom: 200px; left: -100px; }
 .bg-blob-3 { width: 300px; height: 300px; background: #3D9B6C; top: 500px; left: 200px; }
 .bg-blob-4 { width: 250px; height: 250px; background: #D9654B; bottom: 50px; right: 100px; }
 
-/* Stars */
-.star {
-  position: absolute;
-  width: 3px; height: 3px;
-  background: white;
-  border-radius: 50%;
-  opacity: 0.4;
-}
-
-/* Header */
+/* ── Header ── */
 .header {
   text-align: center;
   padding: 52px 60px 36px;
@@ -82,16 +65,15 @@ body {
 .date-badge {
   background: linear-gradient(135deg, #F2A93B, #E8842A);
   color: #2A1500;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
-  padding: 5px 14px;
+  padding: 5px 16px;
   border-radius: 20px;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .main-title {
-  font-family: 'Frank Ruhl Libre', serif;
-  font-size: 54px;
+  font-size: 52px;
   font-weight: 900;
   background: linear-gradient(135deg, #FFFFFF 0%, #B8D8E8 100%);
   -webkit-background-clip: text;
@@ -112,30 +94,24 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(30, 134, 174, 0.2);
-  border: 1px solid rgba(30, 134, 174, 0.4);
+  background: rgba(30,134,174,0.18);
+  border: 1px solid rgba(30,134,174,0.4);
   color: #5BC8E8;
   font-size: 14px;
   font-weight: 600;
-  padding: 7px 18px;
+  padding: 7px 20px;
   border-radius: 30px;
   margin-top: 16px;
 }
 
-.dot-pulse {
+.dot {
   width: 8px; height: 8px;
   background: #5BC8E8;
   border-radius: 50%;
   display: inline-block;
-  animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
-}
-
-/* Divider */
+/* ── Divider ── */
 .divider {
   width: 80%;
   margin: 0 auto;
@@ -145,25 +121,24 @@ body {
   z-index: 10;
 }
 
-/* Features grid */
+/* ── Feature cards ── */
 .features {
-  padding: 38px 50px;
+  padding: 36px 50px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
   position: relative;
   z-index: 10;
 }
 
 .feature-card {
   background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.09);
   border-radius: 22px;
-  padding: 28px 32px;
+  padding: 26px 30px;
   display: flex;
   align-items: flex-start;
   gap: 22px;
-  backdrop-filter: blur(10px);
   position: relative;
   overflow: hidden;
 }
@@ -171,63 +146,60 @@ body {
 .feature-card::before {
   content: '';
   position: absolute;
-  top: 0; right: 0;
+  top: 0; left: 0;
   width: 4px;
   height: 100%;
-  border-radius: 0 22px 22px 0;
+  border-radius: 22px 0 0 22px;
 }
 
-.feature-card.blue::before { background: linear-gradient(180deg, #1E86AE, #5BC8E8); }
-.feature-card.green::before { background: linear-gradient(180deg, #3D9B6C, #66D4A0); }
+.feature-card.blue::before   { background: linear-gradient(180deg, #1E86AE, #5BC8E8); }
+.feature-card.green::before  { background: linear-gradient(180deg, #3D9B6C, #66D4A0); }
 .feature-card.orange::before { background: linear-gradient(180deg, #F2A93B, #FFD080); }
-.feature-card.terra::before { background: linear-gradient(180deg, #D9654B, #F08868); }
+.feature-card.terra::before  { background: linear-gradient(180deg, #D9654B, #F08868); }
 .feature-card.purple::before { background: linear-gradient(180deg, #8B6EC8, #B8A0E8); }
 
-.feature-card.blue { box-shadow: 0 4px 24px rgba(30,134,174,0.15); }
-.feature-card.green { box-shadow: 0 4px 24px rgba(61,155,108,0.15); }
-.feature-card.orange { box-shadow: 0 4px 24px rgba(242,169,59,0.15); }
-.feature-card.terra { box-shadow: 0 4px 24px rgba(217,101,75,0.15); }
-.feature-card.purple { box-shadow: 0 4px 24px rgba(139,110,200,0.15); }
+.feature-card.blue   { box-shadow: 0 4px 24px rgba(30,134,174,0.12); }
+.feature-card.green  { box-shadow: 0 4px 24px rgba(61,155,108,0.12); }
+.feature-card.orange { box-shadow: 0 4px 24px rgba(242,169,59,0.12); }
+.feature-card.terra  { box-shadow: 0 4px 24px rgba(217,101,75,0.12); }
+.feature-card.purple { box-shadow: 0 4px 24px rgba(139,110,200,0.12); }
 
 .feature-icon-wrap {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
+  width: 60px; height: 60px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
+  font-size: 28px;
   flex-shrink: 0;
 }
 
-.blue .feature-icon-wrap { background: linear-gradient(135deg, rgba(30,134,174,0.3), rgba(91,200,232,0.15)); border: 1px solid rgba(30,134,174,0.4); }
-.green .feature-icon-wrap { background: linear-gradient(135deg, rgba(61,155,108,0.3), rgba(102,212,160,0.15)); border: 1px solid rgba(61,155,108,0.4); }
-.orange .feature-icon-wrap { background: linear-gradient(135deg, rgba(242,169,59,0.3), rgba(255,208,128,0.15)); border: 1px solid rgba(242,169,59,0.4); }
-.terra .feature-icon-wrap { background: linear-gradient(135deg, rgba(217,101,75,0.3), rgba(240,136,104,0.15)); border: 1px solid rgba(217,101,75,0.4); }
-.purple .feature-icon-wrap { background: linear-gradient(135deg, rgba(139,110,200,0.3), rgba(184,160,232,0.15)); border: 1px solid rgba(139,110,200,0.4); }
+.blue   .feature-icon-wrap { background: rgba(30,134,174,0.2);  border: 1px solid rgba(30,134,174,0.35); }
+.green  .feature-icon-wrap { background: rgba(61,155,108,0.2);  border: 1px solid rgba(61,155,108,0.35); }
+.orange .feature-icon-wrap { background: rgba(242,169,59,0.2);  border: 1px solid rgba(242,169,59,0.35); }
+.terra  .feature-icon-wrap { background: rgba(217,101,75,0.2);  border: 1px solid rgba(217,101,75,0.35); }
+.purple .feature-icon-wrap { background: rgba(139,110,200,0.2); border: 1px solid rgba(139,110,200,0.35); }
 
 .feature-content { flex: 1; }
 
 .feature-title {
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 800;
-  color: #FFFFFF;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   line-height: 1.2;
 }
 
-.blue .feature-title { color: #7AD4F0; }
-.green .feature-title { color: #7AE0B4; }
+.blue   .feature-title { color: #7AD4F0; }
+.green  .feature-title { color: #7AE0B4; }
 .orange .feature-title { color: #FFD080; }
-.terra .feature-title { color: #F4A890; }
+.terra  .feature-title { color: #F4A890; }
 .purple .feature-title { color: #C4B0F4; }
 
 .feature-desc {
-  font-size: 15px;
+  font-size: 14.5px;
   color: #A8C0D0;
-  font-weight: 400;
-  line-height: 1.6;
-  margin-bottom: 12px;
+  line-height: 1.55;
+  margin-bottom: 11px;
 }
 
 .feature-tags {
@@ -243,44 +215,80 @@ body {
   border-radius: 12px;
 }
 
-.blue .tag { background: rgba(30,134,174,0.2); color: #5BC8E8; border: 1px solid rgba(30,134,174,0.35); }
-.green .tag { background: rgba(61,155,108,0.2); color: #66D4A0; border: 1px solid rgba(61,155,108,0.35); }
-.orange .tag { background: rgba(242,169,59,0.2); color: #FFD080; border: 1px solid rgba(242,169,59,0.35); }
-.terra .tag { background: rgba(217,101,75,0.2); color: #F08868; border: 1px solid rgba(217,101,75,0.35); }
+.blue   .tag { background: rgba(30,134,174,0.2);  color: #5BC8E8; border: 1px solid rgba(30,134,174,0.35); }
+.green  .tag { background: rgba(61,155,108,0.2);  color: #66D4A0; border: 1px solid rgba(61,155,108,0.35); }
+.orange .tag { background: rgba(242,169,59,0.2);  color: #FFD080; border: 1px solid rgba(242,169,59,0.35); }
+.terra  .tag { background: rgba(217,101,75,0.2);  color: #F08868; border: 1px solid rgba(217,101,75,0.35); }
 .purple .tag { background: rgba(139,110,200,0.2); color: #B8A0E8; border: 1px solid rgba(139,110,200,0.35); }
 
-/* Bottom section */
+/* ── Bottom ── */
 .bottom-section {
-  padding: 10px 50px 44px;
+  padding: 8px 50px 42px;
   position: relative;
   z-index: 10;
 }
 
+.countdown-strip {
+  background: linear-gradient(135deg, rgba(242,169,59,0.13), rgba(242,169,59,0.04));
+  border: 1px solid rgba(242,169,59,0.25);
+  border-radius: 16px;
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.countdown-emoji { font-size: 28px; }
+
+.countdown-days {
+  font-size: 40px;
+  font-weight: 900;
+  color: #F2A93B;
+  line-height: 1;
+}
+
+.countdown-sub {
+  font-size: 12px;
+  color: #A08040;
+  font-weight: 500;
+  text-align: center;
+}
+
+.sep { width: 1px; height: 40px; background: rgba(242,169,59,0.3); }
+
+.countdown-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: #FFD080;
+}
+
 .bottom-row {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 14px;
+  margin-bottom: 22px;
 }
 
 .stat-box {
   flex: 1;
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.09);
   border-radius: 18px;
-  padding: 20px 16px;
+  padding: 18px 12px;
   text-align: center;
 }
 
 .stat-number {
-  font-size: 42px;
+  font-size: 40px;
   font-weight: 900;
   line-height: 1;
   margin-bottom: 4px;
 }
 
 .stat-label {
-  font-size: 13px;
-  color: #7090A8;
+  font-size: 12.5px;
+  color: #607888;
   font-weight: 500;
 }
 
@@ -291,54 +299,15 @@ body {
 
 .footer-text {
   text-align: center;
-  font-size: 14px;
-  color: #456070;
-  margin-top: 4px;
-}
-
-.footer-app-name {
-  color: #3AAAD6;
-  font-weight: 700;
-}
-
-/* Countdown strip */
-.countdown-strip {
-  background: linear-gradient(135deg, rgba(242,169,59,0.15), rgba(242,169,59,0.05));
-  border: 1px solid rgba(242,169,59,0.25);
-  border-radius: 16px;
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.countdown-emoji { font-size: 28px; }
-
-.countdown-text {
-  font-size: 17px;
-  font-weight: 700;
-  color: #FFD080;
-}
-
-.countdown-days {
-  font-size: 38px;
-  font-weight: 900;
-  color: #F2A93B;
-  line-height: 1;
-}
-
-.countdown-sub {
   font-size: 13px;
-  color: #A08040;
-  font-weight: 500;
+  color: #3D5060;
 }
+
+.footer-app-name { color: #3AAAD6; font-weight: 700; }
 </style>
 </head>
 <body>
 <div class="card">
-  <!-- Background blobs -->
   <div class="bg-blob bg-blob-1"></div>
   <div class="bg-blob bg-blob-2"></div>
   <div class="bg-blob bg-blob-3"></div>
@@ -348,14 +317,14 @@ body {
   <div class="header">
     <div class="flag-row">
       <span class="flag-emoji">🇮🇱</span>
-      <span class="date-badge">22.6.2026 · עדכון יומי</span>
+      <span class="date-badge">June 22, 2026 &nbsp;·&nbsp; Daily Update</span>
       <span class="flag-emoji">🇮🇹</span>
     </div>
-    <div class="main-title">אנגל באומבריה 🇮🇹</div>
-    <div class="subtitle">אפליקציית הטיול המשפחתי שלנו קיבלה שדרוג ענק היום!</div>
+    <div class="main-title">Angel Family — Umbria Trip 🇮🇹</div>
+    <div class="subtitle">Our family trip app got a massive upgrade today!</div>
     <div class="updates-label">
-      <span class="dot-pulse"></span>
-      6 עדכונים חדשים נוספו היום
+      <span class="dot"></span>
+      6 new features shipped today
     </div>
   </div>
 
@@ -364,116 +333,109 @@ body {
   <!-- Features -->
   <div class="features">
 
-    <!-- Feature 1 - Login persist -->
     <div class="feature-card purple">
       <div class="feature-icon-wrap">🔐</div>
       <div class="feature-content">
-        <div class="feature-title">כניסה חכמה — נשמרת לתמיד</div>
-        <div class="feature-desc">הכנסתם קוד פעם אחת? הגמרתם! הטלפון זוכר אתכם גם אחרי שסוגרים את הדפדפן. לא צריך להזין קוד שוב.</div>
+        <div class="feature-title">Persistent Login — Stay Signed In</div>
+        <div class="feature-desc">Enter your access code once and you're done. The device remembers you even after closing the browser — no need to re-enter the code next time.</div>
         <div class="feature-tags">
-          <span class="tag">✅ זוכר בין כניסות</span>
-          <span class="tag">🔒 מאובטח</span>
+          <span class="tag">✅ Remembered across sessions</span>
+          <span class="tag">🔒 Secure</span>
         </div>
       </div>
     </div>
 
-    <!-- Feature 2 - Kitchen rota -->
     <div class="feature-card orange">
       <div class="feature-icon-wrap">🍳</div>
       <div class="feature-content">
-        <div class="feature-title">רוטציית מטבח + רשימת קניות</div>
-        <div class="feature-desc">כל ארוחות כל יום של הטיול — מי מבשל מה! כולל שבת מלאה עם ג׳ סעודות ונר הדלקה בשעה 20:06. ורשימת קניות קבוצתית לפי קטגוריות.</div>
+        <div class="feature-title">Kitchen Rota + Shared Shopping List</div>
+        <div class="feature-desc">Meal assignments for every meal of all 8 trip days — who cooks what! Includes full Shabbat (3 meals + candle lighting at 20:06) and a shared, category-filtered shopping list.</div>
         <div class="feature-tags">
-          <span class="tag">📅 29.7–5.8</span>
-          <span class="tag">🕯️ שבת אוטומטית</span>
-          <span class="tag">🛒 רשימת קניות</span>
-          <span class="tag">👨‍👩‍👧‍👦 5 משפחות</span>
+          <span class="tag">📅 Jul 29 – Aug 5</span>
+          <span class="tag">🕯️ Auto Shabbat</span>
+          <span class="tag">🛒 Shopping list</span>
+          <span class="tag">👨‍👩‍👧‍👦 5 families</span>
         </div>
       </div>
     </div>
 
-    <!-- Feature 3 - Map -->
     <div class="feature-card green">
       <div class="feature-icon-wrap">🗺️</div>
       <div class="feature-content">
-        <div class="feature-title">מפה אינטראקטיבית של הטיול</div>
-        <div class="feature-desc">מפה חיה של אומבריה עם כל האטרקציות, מסעדות כשרות, הוילה שלנו, ויעדים יומיים ממוספרים. לוחצים על פין — רואים מידע!</div>
+        <div class="feature-title">Interactive Trip Map</div>
+        <div class="feature-desc">A live map of Umbria showing the villa, 12 attractions, kosher restaurants, numbered daily destinations, and custom pins you can add yourself. Tap any pin to see details.</div>
         <div class="feature-tags">
-          <span class="tag">🏡 הוילה</span>
-          <span class="tag">🏛️ אטרקציות</span>
-          <span class="tag">🍽️ כשרות</span>
-          <span class="tag">📍 הוספה ידנית</span>
+          <span class="tag">🏡 The villa</span>
+          <span class="tag">🏛️ Attractions</span>
+          <span class="tag">🍽️ Kosher spots</span>
+          <span class="tag">📍 Custom pins</span>
         </div>
       </div>
     </div>
 
-    <!-- Feature 4 - Packing assignments -->
     <div class="feature-card terra">
       <div class="feature-icon-wrap">🧳</div>
       <div class="feature-content">
-        <div class="feature-title">מי מביא מה — אחריות על ציוד</div>
-        <div class="feature-desc">כל פריט ברשימת האריזה אפשר לשייך למשפחה ספציפית. לא עוד "מי הביא את...?" — כולם רואים בזמן אמת מה על מי.</div>
+        <div class="feature-title">Packing Assignments — Who Brings What</div>
+        <div class="feature-desc">Every item in the packing list can now be assigned to a specific family. No more "who brought the...?" — everyone sees in real time who is responsible for what.</div>
         <div class="feature-tags">
-          <span class="tag">👥 שיתוף מלא</span>
-          <span class="tag">⚡ עדכון חי</span>
+          <span class="tag">👥 Shared live</span>
+          <span class="tag">⚡ Real-time sync</span>
         </div>
       </div>
     </div>
 
-    <!-- Feature 5 - Full redesign -->
     <div class="feature-card blue">
       <div class="feature-icon-wrap">✨</div>
       <div class="feature-content">
-        <div class="feature-title">עיצוב חדש לגמרי + מצב כהה</div>
-        <div class="feature-desc">ממשק חדש לגמרי — יפה, מהיר ונוח לנייד. תפריט חכם, מצב כהה/בהיר שנשמר לכל מכשיר, חיפוש גלובלי בכל האפליקציה, ועוד.</div>
+        <div class="feature-title">Full UI Redesign + Dark Mode</div>
+        <div class="feature-desc">A completely new interface — beautiful, fast, and mobile-friendly. Smart navigation, dark/light theme saved per device, global search across the whole app, and improved accessibility.</div>
         <div class="feature-tags">
-          <span class="tag">🌙 מצב כהה</span>
-          <span class="tag">🔍 חיפוש גלובלי</span>
-          <span class="tag">📱 מותאם מובייל</span>
-          <span class="tag">♿ נגיש</span>
+          <span class="tag">🌙 Dark mode</span>
+          <span class="tag">🔍 Global search</span>
+          <span class="tag">📱 Mobile-first</span>
+          <span class="tag">♿ Accessible</span>
         </div>
       </div>
     </div>
 
   </div>
 
-  <!-- Bottom section -->
+  <!-- Bottom -->
   <div class="bottom-section">
 
-    <!-- Countdown strip -->
     <div class="countdown-strip">
       <span class="countdown-emoji">✈️</span>
       <div style="text-align:center">
         <div class="countdown-days">37</div>
-        <div class="countdown-sub">ימים לטיסה</div>
+        <div class="countdown-sub">days to go</div>
       </div>
-      <div style="width:1px; height:40px; background:rgba(242,169,59,0.3);"></div>
-      <div class="countdown-text">29 ביולי 2026 · אנחנו עפים לאיטליה! 🌟</div>
+      <div class="sep"></div>
+      <div class="countdown-text">July 29, 2026 &nbsp;·&nbsp; We're flying to Italy!</div>
       <span class="countdown-emoji">🇮🇹</span>
     </div>
 
-    <!-- Stats -->
     <div class="bottom-row">
       <div class="stat-box">
         <div class="stat-number">6</div>
-        <div class="stat-label">פיצ׳רים חדשים היום</div>
+        <div class="stat-label">new features today</div>
       </div>
       <div class="stat-box">
         <div class="stat-number">5</div>
-        <div class="stat-label">משפחות מחוברות</div>
+        <div class="stat-label">families connected</div>
       </div>
       <div class="stat-box">
         <div class="stat-number">8</div>
-        <div class="stat-label">ימי טיול</div>
+        <div class="stat-label">trip days</div>
       </div>
       <div class="stat-box">
         <div class="stat-number">∞</div>
-        <div class="stat-label">זכרונות לעשות</div>
+        <div class="stat-label">memories to make</div>
       </div>
     </div>
 
     <div class="footer-text">
-      <span class="footer-app-name">angelbaumbre.github.io</span> · שדרוג יומי · 22 ביוני 2026
+      <span class="footer-app-name">Angel Umbria App</span> &nbsp;·&nbsp; Daily update &nbsp;·&nbsp; June 22, 2026
     </div>
   </div>
 
