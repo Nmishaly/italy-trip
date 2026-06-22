@@ -307,7 +307,7 @@ function uid(){ return Math.random().toString(36).slice(2,9); }
 function tryLogin(){
   const v = document.getElementById('code-input').value.trim();
   if(v === ACCESS_CODE){
-    sessionStorage.setItem('trip-auth','1');
+    localStorage.setItem('trip-auth','1');
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
     boot();
@@ -318,7 +318,7 @@ function tryLogin(){
 document.getElementById('code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
 function logout(){
   if(!confirm('לצאת מהאפליקציה?')) return;
-  sessionStorage.removeItem('trip-auth');
+  localStorage.removeItem('trip-auth');
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('code-input').value='';
@@ -1226,7 +1226,7 @@ async function delBoard(id){
 
 /* ---------- auto-login on refresh ---------- */
 (function(){
-  if(sessionStorage.getItem('trip-auth')==='1'){
+  if(localStorage.getItem('trip-auth')==='1'){
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
     boot();
