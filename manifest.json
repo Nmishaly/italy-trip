@@ -4,8 +4,8 @@
   "description": "אפליקציית הטיול המשפחתי — איטליה תשפ\"ו",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#FBF7E8",
-  "theme_color": "#1B4B6F",
+  "background_color": "#15607F",
+  "theme_color": "#15607F",
   "lang": "he",
   "dir": "rtl",
   "icons": [

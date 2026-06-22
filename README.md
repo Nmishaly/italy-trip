@@ -32,6 +32,12 @@ No installation. No account. No technical setup required by family members — j
 | **Pre-Flight Checklist** | Per-family departure checklist so nothing gets forgotten at the airport |
 | **Emergency Contacts** | Quick-access list: villa host, Israeli embassy, Italian emergency services, and local synagogue |
 | **Family Board** | Announcement board for updates, reminders, and messages — newest posts shown on the home screen |
+| **Who Brings What** | Per-family consolidated packing view that merges a family's personal list with the shared items tagged to them, with live progress |
+| **Inline Editing** | Edit items in place across packing, tasks, contacts, places, kosher, attractions and pre-flight lists |
+| **Interactive Trip Map** | Leaflet/OpenStreetMap map with category filters, per-point navigation, smart place/address search, delete-from-map, and distance-from-villa |
+| **Global Search** | One search box (also `Ctrl/Cmd+K`) that finds places, contacts, packing items, board posts, tasks and more across every tab |
+| **Dark Mode** | Light/dark theme toggle, remembered per device and defaulting to the system preference |
+| **Tap to Call / Navigate** | Phone numbers dial directly; addresses and map points open turn-by-turn navigation |
 | **Offline Mode** | If internet is unavailable, the app serves the last-saved version of all data automatically |
 | **Data Backup** | One-tap JSON export of all trip data; restore from file at any time |
 | **Add to Home Screen** | Works as a PWA — can be installed to a phone's home screen like a native app |
@@ -54,15 +60,14 @@ No installation. No account. No technical setup required by family members — j
 
 ### Navigating the App
 
-At the bottom of your screen (or top on a tablet/computer) you'll see navigation tabs:
+The layout adapts to your device:
 
-- 🏠 **Home** — Overview, countdown, latest announcements, and data backup buttons
-- 🗓️ **Itinerary** — The day-by-day trip schedule
-- 🎒 **Packing** — Shared and personal packing checklists
-- 📞 **Contacts** — Emergency numbers and the villa host
-- 🍽️ **Kosher** — Restaurants, synagogues, and kashrut guidance
+- **On a phone:** a bottom bar gives one-tap access to the four most-used sections — 🏠 Home, 🗓️ Itinerary, 🎒 Packing, 📞 Contacts — plus a **עוד** (More) button that opens a clean grid of every other section.
+- **On a tablet/computer:** a side menu lists all sections, grouped by theme (the trip, food & kashrut, packing & prep, communication).
 
-Tap **עוד** (More) to access additional sections: Places, Flights & Villa, Kosher near the villa, Tasks, Pre-flight checklist, and the Board.
+The header also has a 🔍 **search** button (or press `Ctrl/Cmd+K`) to jump to anything instantly, and a 🌙/☀️ button to switch between light and dark mode.
+
+Full list of sections: Home, Itinerary, Trip Map, Places, Attractions, Flights & Villa, Kosher & Shabbat, Kosher near the Villa, Meal Rota, Packing, Tasks, Pre-flight Checklist, Contacts, and the Board.
 
 ---
 
@@ -102,12 +107,14 @@ The app is intentionally simple — a single HTML file with no build step, no pa
 
 ```
 italy-trip/
-├── index.html       # The entire application (HTML + CSS + JS, ~1,100 lines)
+├── index.html       # The entire application (HTML + CSS + JS, ~2,300 lines)
 ├── manifest.json    # PWA manifest for "Add to Home Screen" support
 ├── icon-192.png     # (Optional) App icon for home screen, 192×192px
 ├── icon-512.png     # (Optional) App icon for home screen, 512×512px
 └── README.md
 ```
+
+The file is organized top-to-bottom as: design tokens + component CSS (with light/dark themes) → app-shell markup → a single `<script>` containing config, storage helpers, shared utilities, theme + modal + search modules, the navigation shell, and one renderer per tab.
 
 ### Running Locally
 
@@ -166,13 +173,17 @@ To adapt this app for a different event or family:
 
 ### Key Architecture Decisions
 
-**Single-file design:** Chosen deliberately so the app can be shared as a link with zero setup. There is no npm, no bundler, and no dependencies. The tradeoff is that all logic lives in one file (~1,100 lines), which is fine for this scale.
+**Single-file design:** Chosen deliberately so the app can be shared as a link with zero setup. There is no npm, no bundler, and no build dependencies. All logic lives in one file (~2,300 lines), which is fine for this scale.
 
 **Firebase REST API (not SDK):** The app calls Firebase via plain `fetch()` rather than importing the Firebase JS SDK. This avoids adding a ~80KB dependency to a file designed to stay minimal and load fast on mobile data.
 
 **localStorage as offline cache:** Every Firebase read/write is mirrored to `localStorage` under a `trip-` prefix. If Firebase is unreachable, `loadKey()` automatically falls back to the cached version. This means the app is fully readable offline after at least one successful load.
 
-**No build step:** CSS variables handle theming, vanilla JS handles all interactivity. If a future version of this app grows beyond ~1,500 lines, splitting into separate `.js` and `.css` files (or adopting a framework like Vue or Svelte) would be the natural next step.
+**Theming via CSS custom properties:** A single set of design tokens (`--bg`, `--surface`, `--brand`, etc.) defined under `:root` and `[data-theme="dark"]` drives the entire UI, so light/dark mode is a one-attribute switch with no per-component overrides.
+
+**Map & geocoding:** The Trip Map uses [Leaflet](https://leafletjs.com/) with CARTO/OpenStreetMap tiles and the optional [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) plugin (loaded from a CDN, with a graceful fallback when offline). The "smart search" Add-Location field queries the free [Nominatim](https://nominatim.org/) geocoder — no API key required — for place suggestions and full-address lookups, biased to Italy. Per-point **Navigate** buttons open Google Maps directions, which works across desktop and mobile.
+
+**No build step:** Vanilla JS handles all interactivity through delegated inline handlers. If the app grows substantially, splitting the `<style>` and `<script>` into separate files would be the natural next step.
 
 ---
 
@@ -180,16 +191,20 @@ To adapt this app for a different event or family:
 
 To reuse this app for a different family event, the following values in `index.html` need to be updated:
 
-| Variable / Section | Location | What to change |
-|---|---|---|
-| `ACCESS_CODE` | Line ~210 | The 4-digit (or longer) family access code |
-| `FAMILIES` | Line ~227 | Array of family/group names |
-| `TRIP_START` / `TRIP_END` | Lines ~229–230 | JavaScript Date objects for trip start and end |
-| `FIREBASE_URL` | Line ~236 | Your Firebase Realtime Database URL |
-| `defaultStay()` | ~Line 525 | Flight numbers, dates, villa name, address, confirmation codes |
-| `defaultContacts()` | ~Line 945 | Emergency contacts relevant to the destination |
-| Page `<title>` and header text | Lines 6, 161–162 | Trip name and subtitle |
-| Color palette (CSS variables) | Lines 10–13 | `--blue`, `--mustard`, `--cypress`, `--terracotta`, etc. |
+Search `index.html` for the following identifiers (no fixed line numbers — the file is a single document, so use your editor's find):
+
+| Variable / Section | What to change |
+|---|---|
+| `ACCESS_CODE` | The 4-digit (or longer) family access code |
+| `FAMILIES` / `FAM_COLORS` | Array of family/group names and their avatar colors |
+| `TRIP_START` / `TRIP_END` | JavaScript Date objects for trip start and end |
+| `VILLA_COORDS` / `VILLA_ADDRESS` | Map center and the one-tap navigation target |
+| `FIREBASE_URL` | Your Firebase Realtime Database URL |
+| `defaultStay()` | Flight numbers, dates, villa name, address, confirmation codes |
+| `defaultContacts()` | Emergency contacts relevant to the destination |
+| `CITY_COORDS_MAP` / `HARDCODED_ATTRACTIONS` | Known places and pre-pinned attractions on the map |
+| Page `<title>` and brand text | Trip name and subtitle (header / sidebar) |
+| Color palette | The `:root` and `[data-theme="dark"]` design tokens — `--brand`, `--accent`, `--terra`, `--green`, etc. |
 
 ---
 
