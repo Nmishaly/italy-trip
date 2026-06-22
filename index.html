@@ -142,6 +142,23 @@ textarea{width:100%; min-height:54px; resize:vertical;}
 a.link{color:var(--blue); font-weight:600;}
 .empty-hint{text-align:center; color:#bbb; font-size:12.5px; padding:18px 0;}
 footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
+
+/* ===== Meal Rota ===== */
+.meal-slot{border-top:1px solid #f0ede0; padding-top:10px; margin-top:8px;}
+.meal-slot:first-child{border-top:none; padding-top:0; margin-top:0;}
+.meal-slot-label{font-size:10.5px; font-weight:700; color:#888; margin-bottom:7px; text-transform:uppercase; letter-spacing:.4px;}
+.fam-checks{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px;}
+.fam-check{display:flex; align-items:center; gap:5px; border:1.5px solid #ddd; border-radius:14px; padding:5px 10px; font-size:11.5px; font-weight:600; color:#777; cursor:pointer; background:#fafafa; transition:background .15s, color .15s, border-color .15s; user-select:none;}
+.fam-check input[type=checkbox]{width:14px; height:14px; accent-color:var(--cypress); flex-shrink:0;}
+.fam-check.active{background:var(--cypress); color:#fff; border-color:var(--cypress);}
+.meal-dish-input{width:100%; border:1.5px solid #e3e0d4; border-radius:9px; padding:7px 11px; font-family:'Heebo',sans-serif; font-size:13px; background:#fff; margin-bottom:5px;}
+.meal-dish-input:focus{outline:none; border-color:var(--mustard);}
+.meal-note-input{width:100%; border:1.5px solid #f0ede0; border-radius:9px; padding:5px 11px; font-family:'Heebo',sans-serif; font-size:11.5px; color:#aaa; background:#fafafa;}
+.meal-note-input:focus{outline:none; border-color:var(--mustard); background:#fff; color:#555;}
+.shop-cat-bar{display:flex; gap:6px; overflow-x:auto; margin-bottom:8px; padding-bottom:4px;}
+.shop-cat-tab{flex-shrink:0; background:#fff; border:1.5px solid #ddd; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:600; color:#777; cursor:pointer; font-family:'Heebo',sans-serif;}
+.shop-cat-tab.active{background:var(--blue); color:#fff; border-color:var(--blue);}
+
 #save-toast{
   position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
   background:var(--cypress); color:#fff; padding:8px 20px;
@@ -222,6 +239,7 @@ const TABS = [
   {id:"preflight", ic:"🧳", label:"הכנות לטיסה"},
   {id:"contacts", ic:"📞", label:"אנשי קשר"},
   {id:"board", ic:"📋", label:"לוח מודעות"},
+  {id:"meal-rota", ic:"🍳", label:"רוטציית מטבח"},
 ];
 const MOBILE_PRIMARY = ["home","itinerary","packing","contacts","kosher"];
 
@@ -408,7 +426,7 @@ RENDERERS.home = async function(){
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 async function exportData(){
-  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','tasks','preflight','contacts','villa-attractions-custom'];
+  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list'];
   const out = {};
   for(const k of keys){
     const v = await loadKey(k, null);
@@ -1222,6 +1240,209 @@ async function delBoard(id){
   board = board.filter(n=>n.id!==id);
   await saveKey('board', board);
   RENDERERS.board();
+}
+
+/* =================================================================
+   MEAL ROTA & KITCHEN SCHEDULE
+================================================================= */
+
+const MEAL_CAT_LABELS = {pareve:'פרווה', dairy:'חלבי', produce:'ירקות ופירות', cleaning:'ניקיון', other:'אחר'};
+const MEAL_CAT_COLORS = {pareve:'var(--cypress)', dairy:'var(--blue)', produce:'#5c8f3e', cleaning:'#7a7a7a', other:'#a0a0a0'};
+
+function defaultMealRota(){
+  const days=[], endMs=TRIP_END.getTime();
+  let d=new Date(TRIP_START), dayNum=1;
+  while(d.getTime()<=endMs){
+    const dow=d.getDay(), isShabbat=dow===6, isErevShabbat=dow===5;
+    const isArrival=dayNum===1, isDeparture=d.getTime()===endMs;
+    const dateStr=d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
+    const HE_DAY=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','שבת'][dow];
+    let dayLabel, meals;
+    if(isShabbat){
+      dayLabel='שבת קודש';
+      meals=[
+        {slot:'shabbat-lunch',   label:'🍷 סעודת שחרית',  families:[], dish:'', note:''},
+        {slot:'seudah-shlishit', label:'🍞 סעודה שלישית', families:[], dish:'', note:''},
+        {slot:'melave-malka',    label:'✨ מלווה מלכה',   families:[], dish:'', note:'הבדלה: ~21:10'}
+      ];
+    } else if(isErevShabbat){
+      dayLabel=`יום ${HE_DAY} — ערב שבת`;
+      meals=[
+        {slot:'breakfast',      label:'☀️ ארוחת בוקר',   families:[], dish:'', note:''},
+        {slot:'lunch',          label:'🌤 ארוחת צהריים',  families:[], dish:'', note:''},
+        {slot:'shabbat-dinner', label:'🕯️ סעודת שבת',    families:[], dish:'', note:'הדלקת נרות: 20:06'}
+      ];
+    } else if(isArrival){
+      dayLabel=`יום ${HE_DAY} — הגעה לווילה`;
+      meals=[
+        {slot:'breakfast', label:'☀️ ארוחת בוקר',   families:[], dish:'', note:'טיסה 18:00 — אכילה בנתב"ג'},
+        {slot:'lunch',     label:'🌤 ארוחת צהריים',  families:[], dish:'', note:''},
+        {slot:'dinner',    label:'🌙 ארוחת ערב',     families:[], dish:'ארוחת פתיחה — ראשונה בווילה 🎉', note:'נחיתה ~20:40 ✈️'}
+      ];
+    } else if(isDeparture){
+      dayLabel=`יום ${HE_DAY} — יום עזיבה`;
+      meals=[
+        {slot:'breakfast', label:'☀️ ארוחת בוקר אחרונה', families:[], dish:'', note:"צ'ק-אאוט עד 10:00 🧳"}
+      ];
+    } else {
+      dayLabel=`יום ${HE_DAY}`;
+      meals=[
+        {slot:'breakfast', label:'☀️ ארוחת בוקר',  families:[], dish:'', note:''},
+        {slot:'lunch',     label:'🌤 ארוחת צהריים', families:[], dish:'', note:''},
+        {slot:'dinner',    label:'🌙 ארוחת ערב',    families:[], dish:'', note:''}
+      ];
+    }
+    days.push({id:uid(), date:dateStr, dayNum, dayLabel, isShabbat, isErevShabbat, meals});
+    d.setDate(d.getDate()+1); dayNum++;
+  }
+  return days;
+}
+
+function defaultShoppingList(){
+  return [
+    {id:uid(), text:'שמן זית כשר',               category:'pareve',  done:false, addedBy:''},
+    {id:uid(), text:"פסטה כשרה (למשל De Cecco)",  category:'pareve',  done:false, addedBy:''},
+    {id:uid(), text:'רוטב עגבניות כשר',           category:'pareve',  done:false, addedBy:''},
+    {id:uid(), text:'גבינה צהובה כשרה',           category:'dairy',   done:false, addedBy:''},
+    {id:uid(), text:'ביצים',                      category:'produce', done:false, addedBy:''},
+    {id:uid(), text:'לחם / חלות לשבת',            category:'pareve',  done:false, addedBy:''},
+    {id:uid(), text:'יין כשר לקידוש',             category:'pareve',  done:false, addedBy:''},
+    {id:uid(), text:'פירות וירקות טריים',          category:'produce', done:false, addedBy:''},
+    {id:uid(), text:'אבקת כביסה (כשרה)',          category:'cleaning',done:false, addedBy:''}
+  ];
+}
+
+RENDERERS['meal-rota'] = async function(){
+  if(!cache.mealShopCat) cache.mealShopCat='all';
+  const days = await loadKey('meal-rota', null) || defaultMealRota();
+  if(!cache.mealRotaInit){ await saveKey('meal-rota', days); cache.mealRotaInit=true; }
+  const shopping = await loadKey('shopping-list', null) || defaultShoppingList();
+  if(!cache.shopListInit){ await saveKey('shopping-list', shopping); cache.shopListInit=true; }
+  document.getElementById('main-content').innerHTML = buildMealRotaHtml(days, shopping);
+};
+
+function buildMealRotaHtml(days, shopping){
+  const dayCards = days.map(day=>{
+    const accent = day.isShabbat ? 'var(--terracotta)' : day.isErevShabbat ? 'var(--mustard)' : 'var(--blue)';
+    const badge = day.isShabbat
+      ? `<span class="tag" style="background:var(--terracotta)">שבת קודש ✨</span>`
+      : day.isErevShabbat
+      ? `<span class="tag" style="background:var(--mustard);color:var(--blue-dark)">ערב שבת 🕯️</span>`
+      : '';
+    const slots = day.meals.map(meal=>{
+      const famChecks = FAMILIES.map(f=>{
+        const checked=(meal.families||[]).includes(f);
+        const sf=f.replace(/'/g,"\\'"), ss=meal.slot;
+        return `<label class="fam-check${checked?' active':''}"><input type="checkbox"${checked?' checked':''} onchange="toggleMealFamily('${day.id}','${ss}','${sf}',this.checked);this.parentElement.classList.toggle('active',this.checked)">${escapeHtml(f)}</label>`;
+      }).join('');
+      return `<div class="meal-slot">
+        <div class="meal-slot-label">${meal.label}</div>
+        <div class="fam-checks">${famChecks}</div>
+        <input class="meal-dish-input" type="text" value="${escapeHtml(meal.dish||'')}" placeholder="מה מכינים? (תפריט, רעיון...)" onblur="saveMealField('${day.id}','${meal.slot}','dish',this.value)">
+        <input class="meal-note-input" type="text" value="${escapeHtml(meal.note||'')}" placeholder="הערה (שעה, אלרגיה, קניות...)" onblur="saveMealField('${day.id}','${meal.slot}','note',this.value)">
+      </div>`;
+    }).join('');
+    return `<div class="card" style="border-inline-start:5px solid ${accent};margin-bottom:12px;">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <span style="font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:16px;color:var(--blue-dark)">יום ${day.dayNum}</span>
+        <span style="font-size:13px;color:var(--blue);font-weight:600">${escapeHtml(day.dayLabel)}</span>
+        <span class="muted" style="font-size:11px">${day.date}</span>
+        ${badge}
+      </div>
+      ${slots}
+    </div>`;
+  }).join('');
+
+  const allCats=['all','pareve','dairy','produce','cleaning','other'];
+  const catLabels={all:'הכל',...MEAL_CAT_LABELS};
+  const curCat=cache.mealShopCat||'all';
+  const catBar=allCats.map(c=>`<button class="shop-cat-tab${c===curCat?' active':''}" onclick="filterShopCat('${c}')">${catLabels[c]}</button>`).join('');
+  const filtered=curCat==='all' ? shopping : shopping.filter(x=>x.category===curCat);
+  const hasDone=shopping.some(x=>x.done);
+  const shopRows=filtered.length ? filtered.map(item=>{
+    const col=MEAL_CAT_COLORS[item.category]||'#aaa';
+    const lbl=MEAL_CAT_LABELS[item.category]||item.category;
+    return `<div class="checkrow${item.done?' done':''}">
+      <input type="checkbox"${item.done?' checked':''} onchange="toggleShoppingItem('${item.id}',this.checked)">
+      <span class="txt">${escapeHtml(item.text)}</span>
+      <span class="tag" style="background:${col};font-size:9.5px">${lbl}</span>
+      ${item.addedBy?`<span class="muted" style="font-size:10.5px;margin-right:4px">${escapeHtml(item.addedBy)}</span>`:''}
+      <button class="btn-del" onclick="delShoppingItem('${item.id}')">✕</button>
+    </div>`;
+  }).join('') : `<div class="empty-hint">אין פריטים בקטגוריה זו</div>`;
+
+  return `
+    <div class="section-title">🍳 רוטציית מטבח</div>
+    <div class="warn-box" style="margin-bottom:14px">כולם יכולים לערוך — סמנו משפחות אחראיות וציינו מה מכינים. נשמר אוטומטית.</div>
+    ${dayCards}
+    <div class="section-title" style="margin-top:8px">🛒 רשימת קניות</div>
+    <div class="card" style="margin-bottom:10px">
+      <div class="row"><input type="text" id="shop-text" placeholder="פריט לקנות..."></div>
+      <div class="row">
+        <select id="shop-cat">${['pareve','dairy','produce','cleaning','other'].map(c=>`<option value="${c}">${MEAL_CAT_LABELS[c]}</option>`).join('')}</select>
+        <select id="shop-adder"><option value="">מי מוסיף?</option>${FAMILIES.map(f=>`<option>${escapeHtml(f)}</option>`).join('')}</select>
+        <button class="btn btn-add" onclick="addShoppingItem()">+</button>
+      </div>
+    </div>
+    <div class="shop-cat-bar">${catBar}</div>
+    <div class="card" style="margin-top:8px" id="shop-items-list">${shopRows}</div>
+    ${hasDone?`<button class="small-btn" style="margin-top:6px" onclick="clearDoneShopping()">🗑️ מחיקת פריטים שנרכשו</button>`:''}
+  `;
+}
+
+async function toggleMealFamily(dayId, slot, family, checked){
+  const days=await loadKey('meal-rota',[]);
+  const day=days.find(d=>d.id===dayId); if(!day) return;
+  const meal=day.meals.find(m=>m.slot===slot); if(!meal) return;
+  if(!meal.families) meal.families=[];
+  if(checked){ if(!meal.families.includes(family)) meal.families.push(family); }
+  else { meal.families=meal.families.filter(f=>f!==family); }
+  await saveKey('meal-rota', days);
+}
+
+async function saveMealField(dayId, slot, field, value){
+  const days=await loadKey('meal-rota',[]);
+  const day=days.find(d=>d.id===dayId); if(!day) return;
+  const meal=day.meals.find(m=>m.slot===slot); if(!meal) return;
+  meal[field]=value;
+  await saveKey('meal-rota', days);
+}
+
+async function addShoppingItem(){
+  const text=document.getElementById('shop-text').value.trim(); if(!text) return;
+  const category=document.getElementById('shop-cat').value;
+  const addedBy=document.getElementById('shop-adder').value;
+  const shopping=await loadKey('shopping-list',[]);
+  shopping.push({id:uid(), text, category, done:false, addedBy});
+  await saveKey('shopping-list', shopping);
+  document.getElementById('shop-text').value='';
+  await RENDERERS['meal-rota']();
+}
+
+async function toggleShoppingItem(id, checked){
+  const shopping=await loadKey('shopping-list',[]);
+  const item=shopping.find(x=>x.id===id); if(item) item.done=checked;
+  await saveKey('shopping-list', shopping);
+}
+
+async function delShoppingItem(id){
+  let shopping=await loadKey('shopping-list',[]);
+  shopping=shopping.filter(x=>x.id!==id);
+  await saveKey('shopping-list', shopping);
+  await RENDERERS['meal-rota']();
+}
+
+async function clearDoneShopping(){
+  if(!confirm('למחוק את כל הפריטים שנרכשו?')) return;
+  let shopping=await loadKey('shopping-list',[]);
+  shopping=shopping.filter(x=>!x.done);
+  await saveKey('shopping-list', shopping);
+  await RENDERERS['meal-rota']();
+}
+
+async function filterShopCat(cat){
+  cache.mealShopCat=cat;
+  await RENDERERS['meal-rota']();
 }
 
 /* ---------- auto-login on refresh ---------- */
