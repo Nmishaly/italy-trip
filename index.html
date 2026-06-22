@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="אנגל באומבריה">
 <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <title>משפחת אנגל — טיול לאומבריה · קיץ תשפ"ו</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
@@ -159,6 +161,14 @@ footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
 .shop-cat-tab{flex-shrink:0; background:#fff; border:1.5px solid #ddd; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:600; color:#777; cursor:pointer; font-family:'Heebo',sans-serif;}
 .shop-cat-tab.active{background:var(--blue); color:#fff; border-color:var(--blue);}
 
+/* ===== Trip Map ===== */
+#trip-map{height:480px; border-radius:16px; overflow:hidden; margin-bottom:10px;}
+@media(max-width:759px){#trip-map{height:calc(100vh - 270px); min-height:340px;}}
+.map-legend{display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:12px; padding:10px 14px; margin-top:0;}
+.map-legend b{color:var(--blue-dark); margin-left:4px;}
+.map-legend span{display:flex; align-items:center; gap:5px; color:#555;}
+.map-dot{width:12px; height:12px; border-radius:50%; border:2px solid rgba(255,255,255,.8); box-shadow:0 1px 4px rgba(0,0,0,.25); flex-shrink:0; display:inline-block;}
+
 #save-toast{
   position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
   background:var(--cypress); color:#fff; padding:8px 20px;
@@ -240,6 +250,7 @@ const TABS = [
   {id:"contacts", ic:"📞", label:"אנשי קשר"},
   {id:"board", ic:"📋", label:"לוח מודעות"},
   {id:"meal-rota", ic:"🍳", label:"רוטציית מטבח"},
+  {id:"map",       ic:"🗺️", label:"מפת הטיול"},
 ];
 const MOBILE_PRIMARY = ["home","itinerary","packing","contacts","kosher"];
 
@@ -1444,6 +1455,138 @@ async function filterShopCat(cat){
   cache.mealShopCat=cat;
   await RENDERERS['meal-rota']();
 }
+
+/* =================================================================
+   INTERACTIVE TRIP MAP (Leaflet + OpenStreetMap)
+================================================================= */
+
+const VILLA_COORDS = [42.4219, 12.4729];
+
+const CITY_COORDS_MAP = {
+  'אוטריקולי':[42.4219,12.4729],'otricoli':[42.4219,12.4729],
+  'נארני':[42.5199,12.5203],    'narni':[42.5199,12.5203],
+  'אורוויאטו':[42.7182,12.1098],'orvieto':[42.7182,12.1098],
+  'אסיזי':[43.0707,12.6197],   'assisi':[43.0707,12.6197],
+  'ספולטו':[42.7339,12.7376],  'spoleto':[42.7339,12.7376],
+  'טרני':[42.5633,12.6445],    'terni':[42.5633,12.6445],
+  'עמליה':[42.5572,12.4178],   'amelia':[42.5572,12.4178],
+  'פידילוקו':[42.5417,12.7547],'piediluco':[42.5417,12.7547],
+  'מארמורה':[42.5559,12.7136], 'marmore':[42.5559,12.7136],
+  'קרסולאה':[42.5347,12.5742], 'carsulae':[42.5347,12.5742],
+  'רומא':[41.8935,12.4780],    'roma':[41.8935,12.4780],'rome':[41.8935,12.4780],
+  'ווילה':[42.4219,12.4729],   'villa':[42.4219,12.4729],
+};
+
+const HARDCODED_ATTRACTIONS = [
+  {name:'אוטריקולי (העיירה)',         coords:[42.4219,12.4729], desc:'~1 ק"מ · כל הגילאים · חינם'},
+  {name:'חורבות אוטריקולי הרומית',    coords:[42.4100,12.4820], desc:'~2 ק"מ · 1–2 שעות'},
+  {name:'נארני',                      coords:[42.5199,12.5203], desc:'~13 ק"מ · 2–3 שעות'},
+  {name:'קרסולאה',                    coords:[42.5347,12.5742], desc:'~15 ק"מ · 1.5–2 שעות'},
+  {name:'טרני',                       coords:[42.5633,12.6445], desc:'~20 ק"מ · עיר קרובה'},
+  {name:'עמליה',                      coords:[42.5572,12.4178], desc:'~20 ק"מ · 1.5–2 שעות'},
+  {name:'מפל מארמורה',                coords:[42.5559,12.7136], desc:'~45 ק"מ · 2–4 שעות'},
+  {name:'אגם פידילוקו',               coords:[42.5417,12.7547], desc:'~40 ק"מ · 2–3 שעות'},
+  {name:'אורוויאטו',                  coords:[42.7182,12.1098], desc:'~40 ק"מ · 3–4 שעות'},
+  {name:'אסיזי',                      coords:[43.0707,12.6197], desc:'~80 ק"מ · יום שלם'},
+  {name:'ספולטו',                     coords:[42.7339,12.7376], desc:'~55 ק"מ · 3–5 שעות'},
+  {name:'רומא — הגטו היהודי',          coords:[41.8935,12.4780], desc:'~60 ק"מ · יום מלא'},
+];
+
+function lookupCityCoords(text){
+  if(!text || !text.trim()) return null;
+  const lower = text.trim().toLowerCase();
+  if(CITY_COORDS_MAP[lower]) return CITY_COORDS_MAP[lower];
+  for(const [key, coords] of Object.entries(CITY_COORDS_MAP)){
+    if(lower.includes(key) || key.includes(lower)) return coords;
+  }
+  return null;
+}
+
+function jitter(coords){
+  return [coords[0]+(Math.random()-.5)*0.003, coords[1]+(Math.random()-.5)*0.003];
+}
+
+function mapPin(color, inner){
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:32px;height:32px;background:${color};border:3px solid rgba(255,255,255,.9);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:pointer">${inner}</div>`,
+    iconSize:[32,32], iconAnchor:[16,16], popupAnchor:[0,-20]
+  });
+}
+
+RENDERERS.map = async function(){
+  if(typeof L === 'undefined'){
+    document.getElementById('main-content').innerHTML = `<div class="card" style="text-align:center;padding:40px 20px"><div style="font-size:48px">🗺️</div><div style="margin-top:12px;color:#888;font-size:13.5px">המפה דורשת חיבור לאינטרנט לטעינה ראשונית</div></div>`;
+    return;
+  }
+  if(cache.leafletMap){ cache.leafletMap.remove(); cache.leafletMap=null; }
+
+  const [itinerary, kosherSpots, customAttractions] = await Promise.all([
+    loadKey('itinerary-days',[]),
+    loadKey('kosher-spots',[]),
+    loadKey('villa-attractions-custom',[])
+  ]);
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="section-title">🗺️ מפת הטיול</div>
+    <div id="trip-map"></div>
+    <div class="card map-legend">
+      <b>מקרא:</b>
+      <span><span class="map-dot" style="background:#E8A33D"></span>הווילה</span>
+      <span><span class="map-dot" style="background:#1B4B6F"></span>יעדי מסלול</span>
+      <span><span class="map-dot" style="background:#C44536"></span>אטרקציות</span>
+      <span><span class="map-dot" style="background:#2F6B4F"></span>מסעדות כשרות</span>
+    </div>
+    <p class="muted" style="margin-top:4px;font-size:11px">לחצו על פין לפרטים · צבטו/גלגלת לזום</p>
+  `;
+
+  const map = L.map('trip-map').setView(VILLA_COORDS, 9);
+  cache.leafletMap = map;
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:18
+  }).addTo(map);
+
+  // Villa (always shown, no jitter)
+  L.marker(VILLA_COORDS, {icon: mapPin('#E8A33D','🏡'), zIndexOffset:1000})
+    .bindPopup('<div dir="rtl"><b>🏡 הווילה שלנו</b><br>Villa La Corona, אוטריקולי<br><small style="color:#888">Strada Vallefigliola, Otricoli</small></div>')
+    .addTo(map);
+
+  // Hardcoded attractions
+  HARDCODED_ATTRACTIONS.forEach(a=>{
+    L.marker(jitter(a.coords), {icon: mapPin('#C44536','🏛️')})
+      .bindPopup(`<div dir="rtl"><b>🏛️ ${a.name}</b><br><small style="color:#888">${a.desc}</small></div>`)
+      .addTo(map);
+  });
+
+  // Itinerary day pins (numbered)
+  itinerary.forEach(day=>{
+    if(!day.city) return;
+    const coords = lookupCityCoords(day.city); if(!coords) return;
+    const activities = [day.morning,day.noon,day.evening].filter(Boolean).join(' · ');
+    const inner = `<span style="font-family:'Frank Ruhl Libre',serif;font-weight:700;color:#fff;font-size:12px">${day.num}</span>`;
+    L.marker(jitter(coords), {icon: mapPin('#1B4B6F', inner)})
+      .bindPopup(`<div dir="rtl"><b>יום ${day.num} — ${escapeHtml(day.city)}</b>${activities?`<br><small style="color:#888">${escapeHtml(activities)}</small>`:''}</div>`)
+      .addTo(map);
+  });
+
+  // Kosher restaurants
+  kosherSpots.forEach(spot=>{
+    const coords = lookupCityCoords(spot.city); if(!coords) return;
+    L.marker(jitter(coords), {icon: mapPin('#2F6B4F','🍽️')})
+      .bindPopup(`<div dir="rtl"><b>🍽️ ${escapeHtml(spot.name)}</b><br>${escapeHtml(spot.city)}${spot.note?`<br><small style="color:#888">${escapeHtml(spot.note)}</small>`:''}</div>`)
+      .addTo(map);
+  });
+
+  // User-added custom attractions
+  customAttractions.forEach(a=>{
+    const coords = lookupCityCoords(a.name) || lookupCityCoords(a.dist||''); if(!coords) return;
+    L.marker(jitter(coords), {icon: mapPin('#C44536','⭐')})
+      .bindPopup(`<div dir="rtl"><b>⭐ ${escapeHtml(a.name)}</b>${a.desc?`<br><small style="color:#888">${escapeHtml(a.desc)}</small>`:''}</div>`)
+      .addTo(map);
+  });
+};
 
 /* ---------- auto-login on refresh ---------- */
 (function(){
