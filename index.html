@@ -169,6 +169,39 @@ footer.appfoot{text-align:center; font-size:10.5px; color:#bbb; padding:10px;}
 .map-legend span{display:flex; align-items:center; gap:5px; color:#555;}
 .map-dot{width:12px; height:12px; border-radius:50%; border:2px solid rgba(255,255,255,.8); box-shadow:0 1px 4px rgba(0,0,0,.25); flex-shrink:0; display:inline-block;}
 
+/* ===== Shared packing — family assignment ===== */
+.pack-item{padding:10px 0; border-bottom:1px solid #f0ede0;}
+.pack-item:last-child{border-bottom:none;}
+.pack-item-top{display:flex; align-items:center; gap:10px;}
+.pack-item-top input[type=checkbox]{width:19px; height:19px; accent-color:var(--cypress); flex-shrink:0;}
+.pack-item-top .txt{flex:1; font-size:13.5px; line-height:1.4;}
+.pack-item-top.done .txt{text-decoration:line-through; color:#aaa;}
+.pack-assign-row{display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:6px; padding-right:29px;}
+.assign-chip{display:flex; align-items:center; gap:4px; border:1.5px solid #ddd; border-radius:12px; padding:3px 9px; font-size:11px; font-weight:600; color:#888; cursor:pointer; background:#fafafa; transition:background .12s,color .12s,border-color .12s; user-select:none;}
+.assign-chip input[type=checkbox]{width:12px; height:12px; accent-color:var(--cypress); flex-shrink:0;}
+.assign-chip.active{background:var(--cypress); color:#fff; border-color:var(--cypress);}
+
+/* ===== Collapsible meal rota days ===== */
+details.meal-day{background:var(--card); border-radius:16px; margin-bottom:12px; box-shadow:0 2px 10px rgba(27,75,111,.07); border:1px solid rgba(27,75,111,.06); overflow:hidden;}
+details.meal-day > summary{display:flex; align-items:center; gap:8px; padding:14px 16px; cursor:pointer; list-style:none; user-select:none; flex-wrap:wrap;}
+details.meal-day > summary::-webkit-details-marker{display:none;}
+details.meal-day > summary::marker{display:none;}
+.sum-chevron{font-size:10px; color:#bbb; margin-right:auto; transition:transform .2s; flex-shrink:0;}
+details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
+.meal-slots-wrap{padding:0 16px 16px;}
+
+/* ===== Map CRUD ===== */
+.pin-mode-btn{width:100%; padding:11px; border:2px dashed var(--blue); border-radius:12px; background:rgba(27,75,111,.04); color:var(--blue); font-weight:700; font-size:13.5px; cursor:pointer; font-family:'Heebo',sans-serif; margin-bottom:10px; transition:background .15s,color .15s; text-align:center;}
+.pin-mode-btn.active{background:var(--blue); color:#fff; border-style:solid;}
+.map-user-pin-card{background:#fff; border-radius:12px; padding:10px 12px; margin-bottom:8px; box-shadow:0 1px 6px rgba(27,75,111,.08); display:flex; align-items:center; gap:10px; border:1px solid rgba(27,75,111,.06);}
+.map-user-pin-card .pin-info{flex:1; min-width:0;}
+.pin-name{font-weight:700; font-size:13.5px; color:var(--blue-dark);}
+.pin-meta{font-size:11.5px; color:#888; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.pin-actions{display:flex; gap:6px; flex-shrink:0;}
+.pin-edit-btn,.pin-del-btn{border-radius:8px; padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Heebo',sans-serif; background:none;}
+.pin-edit-btn{border:1.5px solid var(--blue); color:var(--blue);}
+.pin-del-btn{border:1.5px solid var(--terracotta); color:var(--terracotta);}
+
 #save-toast{
   position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
   background:var(--cypress); color:#fff; padding:8px 20px;
@@ -437,7 +470,7 @@ RENDERERS.home = async function(){
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 async function exportData(){
-  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list'];
+  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list','map-pins'];
   const out = {};
   for(const k of keys){
     const v = await loadKey(k, null);
@@ -960,7 +993,7 @@ async function delCustomAttraction(id){
 ================================================================= */
 function defaultSharedPacking(){
   return ["שקית כלים חד-פעמיים + סכו״ם", "נייר כסף ומגבונים לחים", "תרופות בסיסיות וערכת עזרה ראשונה", "מתאם חשמל לאיטליה", "סבון/אבקת כביסה קטנה", "כדורי אגירה / מטען נייד"]
-    .map(t=>({id:uid(), text:t, done:false}));
+    .map(t=>({id:uid(), text:t, done:false, assignedTo:[]}));
 }
 function defaultPersonalPacking(){ return ["דרכון", "מטען טלפון", "כובע/משקפי שמש", "בגד ים", "תרופות אישיות"].map(t=>({id:uid(),text:t,done:false})); }
 
@@ -981,7 +1014,7 @@ RENDERERS.packing = async function(){
       <div class="row" style="margin-top:8px"><input type="text" id="personal-new" placeholder="הוספת פריט..."><button class="btn btn-add" onclick="addPersonal()">+</button></div>
     </div>
   `;
-  renderCheckList('shared-list', shared, 'packing-shared');
+  renderSharedPackingList(shared);
 
   const sel = document.getElementById('person-select');
   if(!cache.currentPerson) cache.currentPerson = FAMILIES[0];
@@ -1028,17 +1061,17 @@ async function delCheck(storageKey, id, personKey){
     let list = await loadKey(storageKey, []);
     list = list.filter(x=>x.id!==id);
     await saveKey(storageKey, list);
-    if(storageKey==='packing-shared') renderCheckList('shared-list', list, 'packing-shared');
+    if(storageKey==='packing-shared') renderSharedPackingList(list);
     if(storageKey==='tasks') RENDERERS.tasks();
   }
 }
 async function addShared(){
   const v = document.getElementById('shared-new').value.trim(); if(!v) return;
   const list = await loadKey('packing-shared', []);
-  list.push({id:uid(), text:v, done:false});
+  list.push({id:uid(), text:v, done:false, assignedTo:[]});
   await saveKey('packing-shared', list);
   document.getElementById('shared-new').value='';
-  renderCheckList('shared-list', list, 'packing-shared');
+  renderSharedPackingList(list);
 }
 async function addPersonal(){
   const v = document.getElementById('personal-new').value.trim(); if(!v) return;
@@ -1049,6 +1082,35 @@ async function addPersonal(){
   await saveKey('packing-personal', all);
   document.getElementById('personal-new').value='';
   renderPersonalList(all);
+}
+
+function renderSharedPackingList(items){
+  const el = document.getElementById('shared-list'); if(!el) return;
+  if(!items.length){ el.innerHTML='<div class="empty-hint">הרשימה ריקה</div>'; return; }
+  el.innerHTML = items.map(it=>{
+    const assigned = it.assignedTo||[];
+    const chips = FAMILIES.map(f=>{
+      const isOn=assigned.includes(f), sf=f.replace(/'/g,"\\'");
+      return `<label class="assign-chip${isOn?' active':''}"><input type="checkbox"${isOn?' checked':''} onchange="togglePackingAssignment('${it.id}','${sf}',this.checked);this.parentElement.classList.toggle('active',this.checked)">${escapeHtml(f)}</label>`;
+    }).join('');
+    return `<div class="pack-item">
+      <div class="pack-item-top${it.done?' done':''}">
+        <input type="checkbox"${it.done?' checked':''} onchange="toggleCheck('packing-shared','${it.id}',this.checked,null)">
+        <span class="txt">${escapeHtml(it.text)}</span>
+        <button class="btn-del" onclick="delCheck('packing-shared','${it.id}',null)">✕</button>
+      </div>
+      <div class="pack-assign-row"><span class="muted" style="font-size:10.5px;flex-shrink:0">👥 מי מביא:</span>${chips}</div>
+    </div>`;
+  }).join('');
+}
+
+async function togglePackingAssignment(itemId, family, checked){
+  const list=await loadKey('packing-shared',[]);
+  const item=list.find(x=>x.id===itemId); if(!item) return;
+  if(!item.assignedTo) item.assignedTo=[];
+  if(checked){ if(!item.assignedTo.includes(family)) item.assignedTo.push(family); }
+  else { item.assignedTo=item.assignedTo.filter(f=>f!==family); }
+  await saveKey('packing-shared',list);
 }
 
 /* =================================================================
@@ -1353,15 +1415,16 @@ function buildMealRotaHtml(days, shopping){
         <input class="meal-note-input" type="text" value="${escapeHtml(meal.note||'')}" placeholder="הערה (שעה, אלרגיה, קניות...)" onblur="saveMealField('${day.id}','${meal.slot}','note',this.value)">
       </div>`;
     }).join('');
-    return `<div class="card" style="border-inline-start:5px solid ${accent};margin-bottom:12px;">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+    return `<details class="meal-day" style="border-inline-start:5px solid ${accent}" open>
+      <summary>
         <span style="font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:16px;color:var(--blue-dark)">יום ${day.dayNum}</span>
         <span style="font-size:13px;color:var(--blue);font-weight:600">${escapeHtml(day.dayLabel)}</span>
         <span class="muted" style="font-size:11px">${day.date}</span>
         ${badge}
-      </div>
-      ${slots}
-    </div>`;
+        <span class="sum-chevron">▼</span>
+      </summary>
+      <div class="meal-slots-wrap">${slots}</div>
+    </details>`;
   }).join('');
 
   const allCats=['all','pareve','dairy','produce','cleaning','other'];
@@ -1520,11 +1583,14 @@ RENDERERS.map = async function(){
     return;
   }
   if(cache.leafletMap){ cache.leafletMap.remove(); cache.leafletMap=null; }
+  cache.mapAddMode=false; cache.editingPinId=null; cache.pendingPinLat=null; cache.pendingPinLng=null;
+  cache.tempPinMarker=null; cache.mapUserPinMarkers=[];
 
-  const [itinerary, kosherSpots, customAttractions] = await Promise.all([
+  const [itinerary, kosherSpots, customAttractions, userPins] = await Promise.all([
     loadKey('itinerary-days',[]),
     loadKey('kosher-spots',[]),
-    loadKey('villa-attractions-custom',[])
+    loadKey('villa-attractions-custom',[]),
+    loadKey('map-pins',[])
   ]);
 
   document.getElementById('main-content').innerHTML = `
@@ -1536,8 +1602,30 @@ RENDERERS.map = async function(){
       <span><span class="map-dot" style="background:#1B4B6F"></span>יעדי מסלול</span>
       <span><span class="map-dot" style="background:#C44536"></span>אטרקציות</span>
       <span><span class="map-dot" style="background:#2F6B4F"></span>מסעדות כשרות</span>
+      <span><span class="map-dot" style="background:#7a7a7a"></span>מיקומים מותאמים</span>
     </div>
     <p class="muted" style="margin-top:4px;font-size:11px">לחצו על פין לפרטים · צבטו/גלגלת לזום</p>
+
+    <div class="section-title" style="margin-top:18px">📍 מיקומים מותאמים</div>
+    <button id="map-place-btn" class="pin-mode-btn" onclick="enterPinPlacementMode()">📍 הוסף מיקום</button>
+    <div id="map-place-hint" style="display:none;background:rgba(27,75,111,.85);color:#fff;text-align:center;padding:10px 14px;border-radius:10px;margin-bottom:10px;font-size:13px;font-weight:600">
+      לחצו על המפה לסימון המיקום הרצוי 🖱️
+    </div>
+    <div id="map-pin-form" class="card" style="display:none;margin-bottom:10px">
+      <div style="font-weight:700;font-size:13.5px;color:var(--blue-dark);margin-bottom:10px" id="map-form-title">📍 מיקום חדש</div>
+      <div id="pin-coords-hint" style="display:none;font-size:11.5px;color:var(--cypress);font-weight:600;margin-bottom:8px;background:#f0faf4;padding:6px 10px;border-radius:8px"></div>
+      <div class="row"><input type="text" id="pin-name" placeholder="שם המיקום *"></div>
+      <div class="row">
+        <select id="pin-type"><option value="attraction">🏛️ אטרקציה</option><option value="kosher">🍽️ מסעדה / מקום כשר</option><option value="other">📌 אחר</option></select>
+        <select id="pin-adder"><option value="">מי מוסיף?</option>${FAMILIES.map(f=>`<option>${escapeHtml(f)}</option>`).join('')}</select>
+      </div>
+      <div class="row"><input type="text" id="pin-note" placeholder="הערה (שעות, מחיר, טיפ...)"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-add" style="flex:1" onclick="saveMapPin()">שמירה</button>
+        <button class="btn" style="flex:1;background:#e0ddd0;color:#555" onclick="cancelMapPin()">ביטול</button>
+      </div>
+    </div>
+    <div id="map-user-pins-list"></div>
   `;
 
   const map = L.map('trip-map').setView(VILLA_COORDS, 9);
@@ -1548,7 +1636,15 @@ RENDERERS.map = async function(){
     maxZoom:18
   }).addTo(map);
 
-  // Villa (always shown, no jitter)
+  map.on('click', function(e){
+    if(!cache.mapAddMode) return;
+    if(cache.tempPinMarker){ cache.tempPinMarker.remove(); }
+    cache.tempPinMarker = L.marker([e.latlng.lat,e.latlng.lng],{icon:mapPin('#555','📍')}).addTo(map);
+    const hint=document.getElementById('map-place-hint'); if(hint) hint.style.display='none';
+    openMapPinForm(e.latlng.lat, e.latlng.lng, null);
+  });
+
+  // Villa
   L.marker(VILLA_COORDS, {icon: mapPin('#E8A33D','🏡'), zIndexOffset:1000})
     .bindPopup('<div dir="rtl"><b>🏡 הווילה שלנו</b><br>Villa La Corona, אוטריקולי<br><small style="color:#888">Strada Vallefigliola, Otricoli</small></div>')
     .addTo(map);
@@ -1560,33 +1656,136 @@ RENDERERS.map = async function(){
       .addTo(map);
   });
 
-  // Itinerary day pins (numbered)
+  // Itinerary day pins
   itinerary.forEach(day=>{
     if(!day.city) return;
-    const coords = lookupCityCoords(day.city); if(!coords) return;
-    const activities = [day.morning,day.noon,day.evening].filter(Boolean).join(' · ');
-    const inner = `<span style="font-family:'Frank Ruhl Libre',serif;font-weight:700;color:#fff;font-size:12px">${day.num}</span>`;
-    L.marker(jitter(coords), {icon: mapPin('#1B4B6F', inner)})
+    const coords=lookupCityCoords(day.city); if(!coords) return;
+    const activities=[day.morning,day.noon,day.evening].filter(Boolean).join(' · ');
+    const inner=`<span style="font-family:'Frank Ruhl Libre',serif;font-weight:700;color:#fff;font-size:12px">${day.num}</span>`;
+    L.marker(jitter(coords), {icon: mapPin('#1B4B6F',inner)})
       .bindPopup(`<div dir="rtl"><b>יום ${day.num} — ${escapeHtml(day.city)}</b>${activities?`<br><small style="color:#888">${escapeHtml(activities)}</small>`:''}</div>`)
       .addTo(map);
   });
 
-  // Kosher restaurants
+  // Kosher spots
   kosherSpots.forEach(spot=>{
-    const coords = lookupCityCoords(spot.city); if(!coords) return;
+    const coords=lookupCityCoords(spot.city); if(!coords) return;
     L.marker(jitter(coords), {icon: mapPin('#2F6B4F','🍽️')})
       .bindPopup(`<div dir="rtl"><b>🍽️ ${escapeHtml(spot.name)}</b><br>${escapeHtml(spot.city)}${spot.note?`<br><small style="color:#888">${escapeHtml(spot.note)}</small>`:''}</div>`)
       .addTo(map);
   });
 
-  // User-added custom attractions
+  // Custom villa attractions
   customAttractions.forEach(a=>{
-    const coords = lookupCityCoords(a.name) || lookupCityCoords(a.dist||''); if(!coords) return;
+    const coords=lookupCityCoords(a.name)||lookupCityCoords(a.dist||''); if(!coords) return;
     L.marker(jitter(coords), {icon: mapPin('#C44536','⭐')})
       .bindPopup(`<div dir="rtl"><b>⭐ ${escapeHtml(a.name)}</b>${a.desc?`<br><small style="color:#888">${escapeHtml(a.desc)}</small>`:''}</div>`)
       .addTo(map);
   });
+
+  // User-created CRUD pins
+  refreshUserPins(map, userPins);
 };
+
+/* ----- Map CRUD helpers ----- */
+const MAP_PIN_ICONS={kosher:'🍽️',attraction:'🏛️',other:'📌'};
+const MAP_PIN_COLORS={kosher:'#2F6B4F',attraction:'#C44536',other:'#7a7a7a'};
+
+function refreshUserPins(map, pins){
+  (cache.mapUserPinMarkers||[]).forEach(m=>m.remove());
+  cache.mapUserPinMarkers=[];
+  pins.forEach(pin=>{
+    const ic=MAP_PIN_ICONS[pin.type]||'📌', col=MAP_PIN_COLORS[pin.type]||'#7a7a7a';
+    const popup=`<div dir="rtl" style="min-width:160px"><b>${ic} ${escapeHtml(pin.name)}</b>${pin.note?`<br><small style="color:#888">${escapeHtml(pin.note)}</small>`:''}<div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end"><button onclick="editMapPinForm('${pin.id}')" style="border:1.5px solid #1B4B6F;color:#1B4B6F;background:none;border-radius:7px;padding:4px 9px;font-size:11px;font-family:Heebo,sans-serif;cursor:pointer">✏️ ערוך</button><button onclick="deleteMapPin('${pin.id}')" style="border:1.5px solid #C44536;color:#C44536;background:none;border-radius:7px;padding:4px 9px;font-size:11px;font-family:Heebo,sans-serif;cursor:pointer">🗑️ מחק</button></div></div>`;
+    const marker=L.marker([pin.lat,pin.lng],{icon:mapPin(col,ic)}).bindPopup(popup).addTo(map);
+    cache.mapUserPinMarkers.push(marker);
+  });
+  renderUserPinList(pins);
+}
+
+function renderUserPinList(pins){
+  const el=document.getElementById('map-user-pins-list'); if(!el) return;
+  el.innerHTML=pins.length ? pins.map(pin=>`
+    <div class="map-user-pin-card">
+      <span style="font-size:22px">${MAP_PIN_ICONS[pin.type]||'📌'}</span>
+      <div class="pin-info"><div class="pin-name">${escapeHtml(pin.name)}</div>${pin.note?`<div class="pin-meta">${escapeHtml(pin.note)}</div>`:''}</div>
+      <div class="pin-actions"><button class="pin-edit-btn" onclick="editMapPinForm('${pin.id}')">✏️</button><button class="pin-del-btn" onclick="deleteMapPin('${pin.id}')">🗑️</button></div>
+    </div>`).join('') : '<div class="empty-hint" style="padding:12px 0">הוסיפו את המיקום הראשון שלכם!</div>';
+}
+
+function enterPinPlacementMode(){
+  if(cache.mapAddMode){ cancelMapPin(); return; }
+  cache.mapAddMode=true;
+  const btn=document.getElementById('map-place-btn');
+  if(btn){ btn.textContent='✕ ביטול הוספה'; btn.classList.add('active'); }
+  const hint=document.getElementById('map-place-hint'); if(hint) hint.style.display='block';
+  if(cache.leafletMap) cache.leafletMap.getContainer().style.cursor='crosshair';
+}
+
+function openMapPinForm(lat, lng, existingPin){
+  cache.pendingPinLat=lat; cache.pendingPinLng=lng;
+  cache.editingPinId=existingPin?existingPin.id:null;
+  const form=document.getElementById('map-pin-form'); if(!form) return;
+  form.style.display='block';
+  document.getElementById('map-form-title').textContent=existingPin?'✏️ עריכת מיקום':'📍 מיקום חדש';
+  document.getElementById('pin-name').value=existingPin?existingPin.name:'';
+  document.getElementById('pin-note').value=existingPin?(existingPin.note||''):'';
+  document.getElementById('pin-type').value=existingPin?existingPin.type:'attraction';
+  document.getElementById('pin-adder').value=existingPin?(existingPin.addedBy||''):'';
+  const ch=document.getElementById('pin-coords-hint');
+  if(ch){ ch.textContent=lat!=null?`📍 מיקום: ${lat.toFixed(4)}, ${lng.toFixed(4)}`:''; ch.style.display=lat!=null?'block':'none'; }
+  form.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function cancelMapPin(){
+  cache.mapAddMode=false; cache.editingPinId=null; cache.pendingPinLat=null; cache.pendingPinLng=null;
+  if(cache.tempPinMarker){ cache.tempPinMarker.remove(); cache.tempPinMarker=null; }
+  const btn=document.getElementById('map-place-btn');
+  if(btn){ btn.textContent='📍 הוסף מיקום'; btn.classList.remove('active'); }
+  const hint=document.getElementById('map-place-hint'); if(hint) hint.style.display='none';
+  const form=document.getElementById('map-pin-form'); if(form) form.style.display='none';
+  if(cache.leafletMap) cache.leafletMap.getContainer().style.cursor='';
+}
+
+async function saveMapPin(){
+  const name=document.getElementById('pin-name').value.trim();
+  if(!name){ alert('יש להזין שם למיקום'); return; }
+  let lat=cache.pendingPinLat, lng=cache.pendingPinLng;
+  if(lat==null){ const c=lookupCityCoords(name); if(c){lat=c[0];lng=c[1];}else{lat=VILLA_COORDS[0];lng=VILLA_COORDS[1];} }
+  const type=document.getElementById('pin-type').value;
+  const note=document.getElementById('pin-note').value.trim();
+  const addedBy=document.getElementById('pin-adder').value;
+  const pins=await loadKey('map-pins',[]);
+  if(cache.editingPinId){
+    const p=pins.find(x=>x.id===cache.editingPinId);
+    if(p){p.name=name;p.type=type;p.note=note;p.addedBy=addedBy;p.lat=lat;p.lng=lng;}
+  } else {
+    pins.push({id:uid(),name,lat,lng,type,note,addedBy});
+  }
+  await saveKey('map-pins',pins);
+  refreshUserPins(cache.leafletMap,pins);
+  cancelMapPin();
+}
+
+async function deleteMapPin(id){
+  if(!confirm('למחוק את המיקום?')) return;
+  let pins=await loadKey('map-pins',[]);
+  pins=pins.filter(p=>p.id!==id);
+  await saveKey('map-pins',pins);
+  if(cache.leafletMap) cache.leafletMap.closePopup();
+  refreshUserPins(cache.leafletMap,pins);
+}
+
+async function editMapPinForm(id){
+  const pins=await loadKey('map-pins',[]);
+  const pin=pins.find(p=>p.id===id); if(!pin) return;
+  if(cache.leafletMap) cache.leafletMap.closePopup();
+  cache.mapAddMode=true;
+  const btn=document.getElementById('map-place-btn');
+  if(btn){ btn.textContent='✕ ביטול'; btn.classList.add('active'); }
+  if(cache.leafletMap) cache.leafletMap.getContainer().style.cursor='crosshair';
+  openMapPinForm(pin.lat,pin.lng,pin);
+}
 
 /* ---------- auto-login on refresh ---------- */
 (function(){
