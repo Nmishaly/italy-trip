@@ -557,6 +557,65 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
 .wp-arrow{font-size:16px;}
 .wp-divider{height:12px;}
 .wp-foot{margin-top:12px; border-top:1px dashed rgba(255,255,255,.35); padding-top:11px; font-size:11.5px; opacity:.92;}
+
+/* ===== segmented badge (open shopping count) ===== */
+.seg-badge{display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px;
+  border-radius:9px; background:var(--accent); color:var(--accent-ink); font-size:11px; font-weight:800; vertical-align:middle;}
+.segmented button.active .seg-badge{background:var(--brand); color:var(--on-brand);}
+
+/* ===== activity log: toolbar, filters, history grouping, undo ===== */
+.act-toolbar{margin-bottom:8px;}
+.act-search{width:100%; padding:11px 14px; border-radius:var(--r); border:1.5px solid var(--border); background:var(--surface);
+  color:var(--text); font-size:14px; transition:border-color .15s, box-shadow .15s;}
+.act-search:focus{outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--ring);}
+.act-filter{margin-bottom:6px;}
+.act-day-label{position:sticky; top:0; z-index:3; background:var(--bg); display:flex; align-items:center; gap:7px;}
+.act-day-count{font-size:10px; font-weight:700; color:var(--text-mute); background:var(--surface-2); border:1px solid var(--border-soft);
+  border-radius:9px; padding:1px 7px;}
+.act-card{margin-bottom:10px;}
+.act-group-head{display:flex; align-items:center; gap:8px; padding:4px 0 8px; margin-bottom:4px; border-bottom:1px solid var(--border-soft);}
+.act-group-ic{font-size:14px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:7px; background:var(--surface-2);}
+.act-group-name{font-weight:700; font-size:13px; color:var(--brand);}
+.act-group-count{margin-inline-start:auto; font-size:10.5px; font-weight:700; color:var(--text-mute); background:var(--surface-2); border-radius:9px; padding:1px 8px;}
+.act-undo{flex-shrink:0; background:var(--surface-2); border:1.5px solid var(--border); border-radius:9px; width:30px; height:30px;
+  font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; align-self:center; transition:transform .1s, background .15s, border-color .15s;}
+.act-undo:hover{background:color-mix(in srgb,var(--brand) 14%,var(--surface)); border-color:var(--brand);}
+.act-undo:active{transform:scale(.9);}
+.act-undone{opacity:.55;}
+.act-undone .act-detail, .act-undone .act-line b{text-decoration:line-through;}
+.act-undone-tag{font-size:10.5px; font-weight:700; color:var(--terra); background:color-mix(in srgb,var(--terra) 14%,transparent); padding:1px 7px; border-radius:8px;}
+.act-undo .act-ic{}
+
+/* ===== in-page document lightbox ===== */
+.lightbox{position:fixed; inset:0; z-index:300; display:flex; flex-direction:column; background:rgba(6,14,22,.92);
+  backdrop-filter:blur(6px); opacity:0; transition:opacity .2s; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);}
+.lightbox.show{opacity:1;}
+.lb-bar{display:flex; align-items:center; gap:12px; padding:12px 16px; color:#fff;}
+.lb-title{flex:1; min-width:0; font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.lb-actions{display:flex; gap:8px; flex-shrink:0;}
+.lb-btn{background:rgba(255,255,255,.14); border:none; color:#fff; width:40px; height:40px; border-radius:12px; font-size:17px;
+  display:flex; align-items:center; justify-content:center; transition:background .15s, transform .1s;}
+.lb-btn:hover{background:rgba(255,255,255,.26);}
+.lb-btn:active{transform:scale(.92);}
+.lb-btn.lb-x:hover{background:var(--danger);}
+.lb-stage{flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:6px 16px; overflow:auto;}
+.lb-img{max-width:100%; max-height:100%; object-fit:contain; border-radius:10px; box-shadow:0 18px 60px rgba(0,0,0,.5);
+  cursor:zoom-in; transition:transform .2s; background:#fff;}
+.lb-stage.zoomed{align-items:flex-start; justify-content:center;}
+.lb-stage.zoomed .lb-img{max-width:none; max-height:none; width:auto; cursor:zoom-out; transform:scale(1.8); transform-origin:top center;}
+.lb-frame{width:100%; height:100%; border:none; border-radius:10px; background:#fff; box-shadow:0 18px 60px rgba(0,0,0,.5);}
+.lb-fallback{color:#fff; text-align:center; display:flex; flex-direction:column; gap:14px; align-items:center; font-size:14px;}
+.lb-fallback-ic{font-size:64px;}
+.lb-nav{position:absolute; top:50%; transform:translateY(-50%); z-index:2; background:rgba(255,255,255,.16); border:none; color:#fff;
+  width:46px; height:46px; border-radius:50%; font-size:30px; line-height:1; display:flex; align-items:center; justify-content:center; transition:background .15s;}
+.lb-nav:hover{background:rgba(255,255,255,.3);}
+.lb-prev{right:14px;} .lb-next{left:14px;}
+.lb-foot{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 18px; color:#fff;}
+.lb-caption{display:flex; flex-wrap:wrap; gap:8px; font-size:12.5px; min-width:0;}
+.lb-cat{background:rgba(255,255,255,.16); padding:3px 10px; border-radius:9px;}
+.lb-owners{background:color-mix(in srgb,var(--brand-2) 55%,transparent); padding:3px 10px; border-radius:9px;}
+.lb-count{font-size:13px; font-weight:700; opacity:.85; flex-shrink:0;}
+@media (max-width:600px){ .lb-nav{width:40px; height:40px; font-size:26px;} .lb-prev{right:8px;} .lb-next{left:8px;} }
 </style>
 </head>
 <body>
@@ -766,27 +825,89 @@ async function appCheckHeaders(){
   }catch(e){ return {}; }
 }
 
-async function loadKey(key, fallback){
+/* ------------------------------------------------------------
+   loadKey / saveKey
+   ------------------------------------------------------------
+   • Mutations call loadKey(key, fallback) — a NETWORK-FIRST read so the
+     read-modify-write cycle always starts from the freshest server data
+     (keeps the per-key "last write wins" model as tight as possible).
+   • Renderers pass {swr:true} — a STALE-WHILE-REVALIDATE read that returns
+     the localStorage cache *instantly* (so a page refresh paints with no
+     network / App-Check round-trip) and quietly refreshes in the background,
+     re-rendering only if the server data actually changed and it's safe to.
+------------------------------------------------------------ */
+const _priorValue   = {};   // key -> JSON string of the value *before* the latest saveKey (powers Undo)
+const _lastLocalWrite = {}; // key -> ts of our last write (so background revalidate doesn't clobber it)
+const _revalidating = {};   // key -> in-flight guard for background refreshes
+
+function _lsGet(key){
+  const c = localStorage.getItem(LS_PREFIX + key);
+  if(c === null) return undefined;
+  try{ return JSON.parse(c); }catch(e){ return undefined; }
+}
+function _lsSet(key, value){
+  try{ localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); }catch(e){ /* quota — keep syncing to Firebase */ }
+}
+
+async function loadKey(key, fallback, opts){
+  opts = opts || {};
+  if(opts.swr){
+    const cached = _lsGet(key);
+    if(cached !== undefined){ _revalidate(key); return cached; }   // instant paint, refresh in background
+  }
   try{
     const res = await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, { headers: await appCheckHeaders() });
     if(!res.ok) throw new Error('bad response');
     const data = await res.json();
     if(data === null || data === undefined){
-      const cached = localStorage.getItem(LS_PREFIX + key);
-      if(cached){ try{ return JSON.parse(cached); }catch(e){} }
-      return fallback;
+      const cached = _lsGet(key);
+      return cached !== undefined ? cached : fallback;
     }
-    localStorage.setItem(LS_PREFIX + key, JSON.stringify(data));
+    _lsSet(key, data);
+    setFbStatus(true);
     return data;
   }catch(e){
-    const cached = localStorage.getItem(LS_PREFIX + key);
-    if(cached){ try{ setFbStatus(false, true); return JSON.parse(cached); }catch(e2){} }
+    const cached = _lsGet(key);
+    if(cached !== undefined){ setFbStatus(false, true); return cached; }
     return fallback;
   }
 }
+
+// Background refresh for SWR reads: update the cache and re-render the current
+// tab once, but only if the data really changed and we won't trample an edit.
+async function _revalidate(key){
+  if(_revalidating[key]) return;
+  if(Date.now() - (_lastLocalWrite[key] || 0) < 4000) return; // our own recent write may not be echoed yet
+  _revalidating[key] = true;
+  try{
+    const res = await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, { headers: await appCheckHeaders() });
+    if(!res.ok) throw 0;
+    const data = await res.json();
+    setFbStatus(true);
+    if(data === null || data === undefined) return;
+    const freshStr = JSON.stringify(data);
+    if(freshStr !== localStorage.getItem(LS_PREFIX + key)){
+      _lsSet(key, data);
+      _scheduleSwrRerender();
+    }
+  }catch(e){ /* offline — keep showing cached data */ }
+  finally{ _revalidating[key] = false; }
+}
+let _swrRerenderT;
+function _scheduleSwrRerender(){
+  clearTimeout(_swrRerenderT);
+  _swrRerenderT = setTimeout(()=>{
+    const ae = document.activeElement;
+    if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;            // don't interrupt typing
+    if(document.querySelector('.modal-overlay, .lightbox.show, .more-overlay.show, .search-overlay.show')) return;
+    if(currentTab && RENDERERS[currentTab]) RENDERERS[currentTab]();
+  }, 150);
+}
+
 async function saveKey(key, value, silent=false){
-  try{ localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); }
-  catch(e){ /* quota exceeded (e.g. large documents) — keep syncing to Firebase anyway */ }
+  _priorValue[key] = localStorage.getItem(LS_PREFIX + key); // snapshot prior state for Undo (string or null)
+  _lastLocalWrite[key] = Date.now();
+  _lsSet(key, value);
   try{
     await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, {
       method:'PUT',
@@ -809,15 +930,75 @@ const ACTIVITY_LABELS = {
   'shopping-list':'רשימת קניות', 'map-pins':'נקודות במפה', 'stay-flights':'לינה וטיסות',
   'flight-folder':'תיקיית הטיסה', 'photo-album':'אלבום תמונות'
 };
-const ACTIVITY_ICONS = { add:'➕', edit:'✏️', del:'🗑️' };
-const ACTIVITY_VERBS = { add:'הוספה', edit:'עריכה', del:'מחיקה' };
-// action: 'add' | 'edit' | 'del'; entity: a key from ACTIVITY_LABELS; detail: free text; who: optional family name
+const ACTIVITY_ICONS = { add:'➕', edit:'✏️', del:'🗑️', undo:'↩️' };
+const ACTIVITY_VERBS = { add:'הוספה', edit:'עריכה', del:'מחיקה', undo:'ביטול פעולה' };
+const UNDO_SNAP_MAX = 2500000;   // ~2.5MB — skip Undo snapshots larger than this (avoids bloating the DB)
+const UNDO_KEEP      = 25;       // keep snapshots for the 25 most recent undoable actions
+const UNDO_BUDGET    = 4000000;  // ...within a ~4MB total budget
+
+// Persist the prior-state snapshot for an undoable action. Returns the snapshot
+// id on success, or null if it was too big / failed (→ no Undo button shown).
+async function _saveUndoSnapshot(key, snapStr){
+  if(!snapStr || snapStr.length > UNDO_SNAP_MAX) return null;
+  try{
+    const id = uid();
+    const store = await loadKey('undo-store', {});
+    store[id] = { key, snap:snapStr, ts:Date.now() };
+    // prune to the newest UNDO_KEEP entries within UNDO_BUDGET bytes
+    const kept = {}; let total = 0, n = 0;
+    for(const [sid, rec] of Object.entries(store).sort((a,b)=>b[1].ts-a[1].ts)){
+      total += (rec.snap||'').length; n++;
+      if(n <= UNDO_KEEP && total <= UNDO_BUDGET) kept[sid] = rec;
+    }
+    if(!kept[id]) return null; // our snapshot didn't make the cut
+    await saveKey('undo-store', kept, true);
+    return id;
+  }catch(e){ return null; }
+}
+
+// action: 'add' | 'edit' | 'del' | 'undo'; entity: a key from ACTIVITY_LABELS;
+// detail: free text; who: optional family name. Adds/deletes are made undoable
+// by snapshotting the entity key's prior state (captured by saveKey).
 async function logActivity(action, entity, detail, who){
   try{
+    const entry = { id:uid(), ts:Date.now(), action, entity, detail:(detail||'').slice(0,160), who:who||'' };
+    if(action === 'add' || action === 'del'){
+      const snap = _priorValue[entity];
+      if(snap !== undefined && snap !== null){
+        const sid = await _saveUndoSnapshot(entity, snap);
+        if(sid) entry.undo = { id:sid, key:entity, action };
+      }
+    }
     const log = await loadKey('activity-log', []);
-    log.push({ id:uid(), ts:Date.now(), action, entity, detail:(detail||'').slice(0,160), who:who||'' });
+    log.push(entry);
     await saveKey('activity-log', log.slice(-300), true); // keep last 300, no toast
   }catch(e){ /* logging must never break a user action */ }
+}
+
+// Reverse a previously logged add/del by restoring the entity key's prior state.
+async function undoActivity(entryId){
+  const log = await loadKey('activity-log', []);
+  const entry = log.find(e=>e.id===entryId);
+  if(!entry || !entry.undo || entry.undone) return;
+  const store = await loadKey('undo-store', {});
+  const rec = store[entry.undo.id];
+  if(!rec){ alertModal('לא ניתן לבטל — נתוני השחזור כבר אינם זמינים (ייתכן שעבר זמן רב או שבוצעו פעולות רבות מאז).','↩️'); return; }
+  const verb = ACTIVITY_VERBS[entry.action] || '';
+  if(!(await confirmModal(`לבטל את הפעולה: ${verb} · ${entry.detail||ACTIVITY_LABELS[entry.entity]||''}?`, {okText:'ביטול הפעולה', icon:'↩️', danger:false}))) return;
+  let snapVal = null;
+  try{ snapVal = JSON.parse(rec.snap); }catch(e){ snapVal = null; }
+  await saveKey(rec.key, snapVal); // restore prior state
+  delete store[entry.undo.id];
+  await saveKey('undo-store', store, true);
+  // re-load the log (it may have changed), mark the entry undone, record the reversal
+  const log2 = await loadKey('activity-log', []);
+  const e2 = log2.find(e=>e.id===entryId); if(e2) e2.undone = true;
+  log2.push({ id:uid(), ts:Date.now(), action:'undo', entity:entry.entity, detail:`${verb}${entry.detail?' · '+entry.detail:''}`, who:entry.who||'' });
+  await saveKey('activity-log', log2.slice(-300), true);
+  showToast('הפעולה בוטלה ↩️');
+  // reset one-time seed guards so restored data re-renders cleanly
+  ['mealRotaInit','shopListInit','packInit','itineraryInit','stayInit','kosherSpotsInit','synsInit'].forEach(k=>cache[k]=undefined);
+  RENDERERS.activity();
 }
 
 function setFbStatus(ok, offline=false){
@@ -1166,7 +1347,7 @@ function triggerImport(){
 
 /* ---------- HOME ---------- */
 RENDERERS.home = async function(){
-  const board = await loadKey('board', []);
+  const board = await loadKey('board', [], {swr:true});
   const last2 = [...board].slice(-2).reverse();
   const c = computeCountdown();
   el('main-content').innerHTML = `
@@ -1238,7 +1419,7 @@ function dayDate(num){ const d = new Date(TRIP_START); d.setDate(d.getDate()+(nu
 function isToday(d){ const n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
 
 RENDERERS.itinerary = async function(){
-  const days = await loadKey('itinerary-days', null) || defaultItinerary();
+  const days = await loadKey('itinerary-days', null, {swr:true}) || defaultItinerary();
   if(!cache.itineraryInit){ await saveKey('itinerary-days', days); cache.itineraryInit = true; }
   el('main-content').innerHTML = `<div class="section-title">🗓️ המסלול היומי</div>
     <p class="section-sub">כולם יכולים לערוך — השינויים נשמרים אוטומטית. לחצו על שם עיר מוכרת כדי לראותה במפה.</p>
@@ -1275,7 +1456,7 @@ RENDERERS.itinerary = async function(){
 
 /* ---------- PLACES ---------- */
 RENDERERS.places = async function(){
-  const places = await loadKey('places', []);
+  const places = await loadKey('places', [], {swr:true});
   el('main-content').innerHTML = `
     <div class="section-title">📍 מקומות לבקר</div>
     <p class="section-sub">רשימת משאלות של מקומות, אתרים ואטרקציות. אפשר לערוך ולחפש במפה.</p>
@@ -1347,7 +1528,7 @@ function defaultStay(){
   };
 }
 RENDERERS.stay = async function(){
-  const s = await loadKey('stay-flights', null) || defaultStay();
+  const s = await loadKey('stay-flights', null, {swr:true}) || defaultStay();
   if(!cache.stayInit){ await saveKey('stay-flights', s); cache.stayInit = true; }
   el('main-content').innerHTML = `
     <div class="section-title">✈️ טיסות<button class="small-btn" style="margin-inline-start:auto" onclick="editStay()">✏️ עריכה</button></div>
@@ -1478,7 +1659,7 @@ async function saveStayEdit(){
 
 /* ---------- KOSHER & SHABBAT ---------- */
 RENDERERS.kosher = async function(){
-  let kosherSpots = await loadKey('kosher-spots', null);
+  let kosherSpots = await loadKey('kosher-spots', null, {swr:true});
   if(!kosherSpots){
     kosherSpots = [
       {id:uid(), city:"רומא (הגטו היהודי)", name:"BaGhetto Ristorante / Pastry Bistrot", note:"מסעדה כשרה + בית קפה, מטבח יהודי-רומאי"},
@@ -1488,7 +1669,7 @@ RENDERERS.kosher = async function(){
     ];
     if(!cache.kosherSpotsInit){ await saveKey('kosher-spots', kosherSpots); cache.kosherSpotsInit=true; }
   }
-  let syns = await loadKey('synagogues', null);
+  let syns = await loadKey('synagogues', null, {swr:true});
   if(!syns){
     syns = [{id:uid(), name:"Tempio Maggiore di Roma (בית הכנסת הגדול)", address:"Lungotevere de' Cenci, 00186 Roma", phone:"+39 06 6840 0651"}];
     if(!cache.synsInit){ await saveKey('synagogues', syns); cache.synsInit=true; }
@@ -1653,7 +1834,7 @@ RENDERERS["villa-kosher"] = async function(){
 
 /* ---------- VILLA ATTRACTIONS ---------- */
 RENDERERS["villa-attractions"] = async function(){
-  const custom = await loadKey('villa-attractions-custom', []);
+  const custom = await loadKey('villa-attractions-custom', [], {swr:true});
   el('main-content').innerHTML = `
     <div class="section-title">🏛️ אטרקציות קרובות לווילה</div>
     <div class="warn-box" style="margin-bottom:14px;">
@@ -1837,9 +2018,9 @@ function setPackView(v){ cache.packView=v; cache.editPack=null; RENDERERS.packin
 function selectPackPerson(name){ cache.currentPerson=name; cache.editPack=null; renderPackBody(); }
 
 async function renderPackBody(){
-  const shared = await loadKey('packing-shared', null) || defaultSharedPacking();
+  const shared = await loadKey('packing-shared', null, {swr:true}) || defaultSharedPacking();
   if(!cache.packInit){ await saveKey('packing-shared', shared); cache.packInit=true; }
-  const personalAll = await loadKey('packing-personal', {});
+  const personalAll = await loadKey('packing-personal', {}, {swr:true});
   if(!cache.currentPerson) cache.currentPerson = FAMILIES[0];
   const body = el('pack-body'); if(!body) return;
   const v = cache.packView || 'shared';
@@ -1918,7 +2099,7 @@ async function addPersonal(){ const i=el('personal-new'); const v=i.value.trim()
 
 /* ---------- TASKS ---------- */
 RENDERERS.tasks = async function(){
-  const tasks = await loadKey('tasks', []);
+  const tasks = await loadKey('tasks', [], {swr:true});
   if(!cache.taskFilter) cache.taskFilter='all';
   el('main-content').innerHTML = `
     <div class="section-title">✅ מטלות לפני הנסיעה</div>
@@ -1972,7 +2153,7 @@ function defaultPreflightItems(){
     .map(t=>({id:uid(), text:t, done:false}));
 }
 RENDERERS.preflight = async function(){
-  const all = await loadKey('preflight', {});
+  const all = await loadKey('preflight', {}, {swr:true});
   if(!cache.currentPFFamily) cache.currentPFFamily = FAMILIES[0];
   el('main-content').innerHTML = `<div class="section-title">🧳 הכנות לפני הטיסה</div>
     <p class="section-sub">צ'ק-ליסט נפרד לכל משפחה גרעינית</p><div id="pf-wrap"></div>`;
@@ -2012,7 +2193,7 @@ function defaultContacts(){
   ];
 }
 RENDERERS.contacts = async function(){
-  const contacts = await loadKey('contacts', null) || defaultContacts();
+  const contacts = await loadKey('contacts', null, {swr:true}) || defaultContacts();
   if(!cache.contactsInit){ await saveKey('contacts', contacts); cache.contactsInit=true; }
   el('main-content').innerHTML = `
     <div class="section-title">📞 אנשי קשר חשובים</div>
@@ -2060,7 +2241,7 @@ async function delContact(id){
 
 /* ---------- BOARD ---------- */
 RENDERERS.board = async function(){
-  const board = await loadKey('board', []);
+  const board = await loadKey('board', [], {swr:true});
   el('main-content').innerHTML = `
     <div class="section-title">📋 לוח מודעות</div>
     <div class="card">
@@ -2170,43 +2351,76 @@ function rerenderBoardSurface(){ if(currentTab==='board') RENDERERS.board(); els
 
 /* ---------- ACTIVITY LOG ---------- */
 RENDERERS.activity = async function(){
-  const log = await loadKey('activity-log', []);
-  const rev = [...log].reverse();
+  const log = await loadKey('activity-log', [], {swr:true});
+  let rev = [...log].reverse();
+  const filter = cache.activityFilter || 'all';
+  const query = (cache.activityQuery || '').trim().toLowerCase();
+  // entities present in the log, for the group filter chips
+  const present = [];
+  rev.forEach(e=>{ if(e.entity && !present.includes(e.entity)) present.push(e.entity); });
+  if(filter !== 'all') rev = rev.filter(e=>e.entity === filter);
+  if(query) rev = rev.filter(e=>(`${ACTIVITY_VERBS[e.action]||''} ${ACTIVITY_LABELS[e.entity]||e.entity||''} ${e.detail||''} ${e.who||''}`).toLowerCase().includes(query));
+
+  const chips = ['all', ...present].map(id=>{
+    const lbl = id==='all' ? 'הכל' : (ACTIVITY_LABELS[id]||id);
+    return `<button class="${id===filter?'active':''}" onclick="setActivityFilter('${q(id)}')">${escapeHtml(lbl)}</button>`;
+  }).join('');
+
   el('main-content').innerHTML = `
-    <div class="section-title">🕒 פעילות אחרונה באתר${rev.length?`<button class="small-btn" style="margin-inline-start:auto" onclick="clearActivityLog()">🗑️ ניקוי היסטוריה</button>`:''}</div>
-    <p class="section-sub">כל שינוי באתר — הוספה, עריכה או מחיקה — מתועד כאן עם חותמת זמן ותיאור.</p>
-    ${rev.length ? renderActivityGroups(rev) : '<div class="card empty-hint">עדיין לא נרשמה פעילות — כל שינוי שתעשו יופיע כאן.</div>'}`;
+    <div class="section-title">🕒 פעילות אחרונה באתר${log.length?`<button class="small-btn" style="margin-inline-start:auto" onclick="clearActivityLog()">🗑️ ניקוי היסטוריה</button>`:''}</div>
+    <p class="section-sub">היסטוריית כל השינויים באתר — מאורגנת לפי תאריך וקבוצה, בדומה להיסטוריית גלישה. אפשר לבטל הוספות ומחיקות בלחיצה על ↩️.</p>
+    ${log.length?`
+      <div class="act-toolbar">
+        <input type="search" class="act-search" id="act-search" placeholder="🔍 חיפוש בהיסטוריה..." value="${escapeHtml(cache.activityQuery||'')}" oninput="onActivitySearch(this.value)">
+      </div>
+      <div class="fam-select act-filter">${chips}</div>`:''}
+    ${rev.length ? renderActivityGroups(rev) : `<div class="card empty-hint">${log.length?'לא נמצאו רשומות מתאימות לסינון.':'עדיין לא נרשמה פעילות — כל שינוי שתעשו יופיע כאן.'}</div>`}`;
+  const s = el('act-search'); if(s && query){ s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
 };
+function setActivityFilter(id){ cache.activityFilter = id; RENDERERS.activity(); }
+let _actSearchT;
+function onActivitySearch(v){ cache.activityQuery = v; clearTimeout(_actSearchT); _actSearchT = setTimeout(()=>RENDERERS.activity(), 200); }
 function renderActivityGroups(rev){
-  // group entries by calendar day
-  const groups = [];
-  let cur = null;
+  // organize like browser history: primary grouping by calendar day, and inside
+  // each day cluster consecutive entries by their group (entity).
+  const days = [];
+  let curDay = null;
   rev.forEach(e=>{
     const dayKey = new Date(e.ts).toDateString();
-    if(!cur || cur.dayKey !== dayKey){
-      cur = { dayKey, label: activityDayLabel(e.ts), items: [] };
-      groups.push(cur);
+    if(!curDay || curDay.dayKey !== dayKey){
+      curDay = { dayKey, label: activityDayLabel(e.ts), clusters: [] };
+      days.push(curDay);
     }
-    cur.items.push(e);
+    let cl = curDay.clusters[curDay.clusters.length-1];
+    if(!cl || cl.entity !== e.entity){
+      cl = { entity: e.entity, items: [] };
+      curDay.clusters.push(cl);
+    }
+    cl.items.push(e);
   });
-  return groups.map(g=>`
-    <div class="act-day-label">${escapeHtml(g.label)}</div>
-    <div class="card act-card">
-      ${g.items.map(e=>{
-        const lbl = ACTIVITY_LABELS[e.entity] || e.entity || '';
-        const ic = ACTIVITY_ICONS[e.action] || '•';
-        const verb = ACTIVITY_VERBS[e.action] || '';
-        const time = new Date(e.ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-        return `<div class="act-item act-${escapeHtml(e.action)}">
-          <span class="act-ic">${ic}</span>
-          <div class="act-body">
-            <div class="act-line"><b>${escapeHtml(verb)}</b> · <span class="act-entity">${escapeHtml(lbl)}</span>${e.who?` · <span class="act-who">${escapeHtml(e.who)}</span>`:''}</div>
-            ${e.detail?`<div class="act-detail">${escapeHtml(e.detail)}</div>`:''}
-          </div>
-          <span class="act-time">${escapeHtml(time)}</span>
-        </div>`;
-      }).join('')}
-    </div>`).join('');
+  return days.map(g=>`
+    <div class="act-day-label">${escapeHtml(g.label)} <span class="act-day-count">${g.clusters.reduce((n,c)=>n+c.items.length,0)}</span></div>
+    ${g.clusters.map(cl=>{
+      const groupLbl = ACTIVITY_LABELS[cl.entity] || cl.entity || '';
+      return `<div class="card act-card">
+        <div class="act-group-head"><span class="act-group-ic">${cl.items[0]&&ACTIVITY_ICONS[cl.items[0].action]||'•'}</span><span class="act-group-name">${escapeHtml(groupLbl)}</span><span class="act-group-count">${cl.items.length}</span></div>
+        ${cl.items.map(e=>{
+          const ic = ACTIVITY_ICONS[e.action] || '•';
+          const verb = ACTIVITY_VERBS[e.action] || '';
+          const time = new Date(e.ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+          const canUndo = e.undo && !e.undone;
+          return `<div class="act-item act-${escapeHtml(e.action)}${e.undone?' act-undone':''}">
+            <span class="act-ic">${ic}</span>
+            <div class="act-body">
+              <div class="act-line"><b>${escapeHtml(verb)}</b>${e.who?` · <span class="act-who">${escapeHtml(e.who)}</span>`:''}${e.undone?' · <span class="act-undone-tag">בוטל</span>':''}</div>
+              ${e.detail?`<div class="act-detail">${escapeHtml(e.detail)}</div>`:''}
+            </div>
+            <span class="act-time">${escapeHtml(time)}</span>
+            ${canUndo?`<button class="act-undo" title="ביטול הפעולה" aria-label="ביטול הפעולה" onclick="undoActivity('${q(e.id)}')">↩️</button>`:''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}`).join('');
 }
 function activityDayLabel(ts){
   const d = new Date(ts), now = new Date();
@@ -2219,6 +2433,7 @@ function activityDayLabel(ts){
 async function clearActivityLog(){
   if(!(await confirmModal('לנקות את כל היסטוריית הפעילות? פעולה זו אינה הפיכה.', {okText:'ניקוי', icon:'🗑️'}))) return;
   await saveKey('activity-log', []);
+  await saveKey('undo-store', {}, true); // drop orphaned undo snapshots too
   RENDERERS.activity();
 }
 
@@ -2287,12 +2502,14 @@ function defaultShoppingList(){
 }
 RENDERERS['meal-rota'] = async function(){
   if(!cache.mealShopCat) cache.mealShopCat='all';
-  const days = await loadKey('meal-rota', null) || defaultMealRota();
+  if(!cache.mealView) cache.mealView='meals';
+  const days = await loadKey('meal-rota', null, {swr:true}) || defaultMealRota();
   if(!cache.mealRotaInit){ await saveKey('meal-rota', days); cache.mealRotaInit=true; }
-  const shopping = await loadKey('shopping-list', null) || defaultShoppingList();
+  const shopping = await loadKey('shopping-list', null, {swr:true}) || defaultShoppingList();
   if(!cache.shopListInit){ await saveKey('shopping-list', shopping); cache.shopListInit=true; }
   el('main-content').innerHTML = buildMealRotaHtml(days, shopping);
 };
+function setMealView(v){ cache.mealView=v; RENDERERS['meal-rota'](); }
 function buildMealRotaHtml(days, shopping){
   const dayCards = days.map(day=>{
     const accent = day.isShabbat ? 'var(--terra)' : day.isErevShabbat ? 'var(--accent)' : 'var(--brand)';
@@ -2342,11 +2559,19 @@ function buildMealRotaHtml(days, shopping){
     </div>`;
   }).join('') : `<div class="empty-hint">אין פריטים בקטגוריה זו</div>`;
 
-  return `
-    <div class="section-title">🍳 רוטציית מטבח</div>
+  const view = cache.mealView || 'meals';
+  const openShopCount = shopping.length - doneCount;
+  const segmented = `
+    <div class="segmented" role="tablist">
+      <button class="${view==='meals'?'active':''}" role="tab" onclick="setMealView('meals')">🍽️ חלוקת ארוחות</button>
+      <button class="${view==='shop'?'active':''}" role="tab" onclick="setMealView('shop')">🛒 רשימת קניות${openShopCount?` <span class="seg-badge">${openShopCount}</span>`:''}</button>
+    </div>`;
+
+  const mealsSection = `
     <div class="warn-box" style="margin-bottom:14px">כולם יכולים לערוך — סמנו משפחות אחראיות וציינו מה מכינים. נשמר אוטומטית.</div>
-    ${dayCards}
-    <div class="section-title" style="margin-top:14px">🛒 רשימת קניות</div>
+    ${dayCards}`;
+
+  const shopSection = `
     <div class="card" style="margin-bottom:10px">
       <div class="row"><input type="text" id="shop-text" placeholder="פריט לקנות..." onkeydown="if(event.key==='Enter')addShoppingItem()"></div>
       <div class="row">
@@ -2358,7 +2583,12 @@ function buildMealRotaHtml(days, shopping){
     ${shopping.length?progressHtml(doneCount,shopping.length):''}
     <div class="shop-cat-bar">${catBar}</div>
     <div class="card" id="shop-items-list">${shopRows}</div>
-    ${hasDone?`<button class="small-btn" style="margin-top:6px" onclick="clearDoneShopping()">🗑️ מחיקת פריטים שנרכשו</button>`:''}
+    ${hasDone?`<button class="small-btn" style="margin-top:6px" onclick="clearDoneShopping()">🗑️ מחיקת פריטים שנרכשו</button>`:''}`;
+
+  return `
+    <div class="section-title">🍳 רוטציית מטבח</div>
+    ${segmented}
+    ${view==='shop' ? shopSection : mealsSection}
   `;
 }
 async function toggleMealFamily(dayId, slot, family, checked){
@@ -2777,7 +3007,8 @@ function memberName(folder, id){
 }
 
 RENDERERS['flight-folder'] = async function(){
-  const all = await loadKey('flight-folder', {});
+  const all = await loadKey('flight-folder', {}, {swr:true});
+  cache._folderAll = all; // kept for live in-place doc search
   if(!cache.currentFolderFam) cache.currentFolderFam = FAMILIES[0];
   const fam = cache.currentFolderFam;
   const seededBefore = !!(all[fam] && all[fam].members && all[fam].members.length);
@@ -2830,7 +3061,10 @@ RENDERERS['flight-folder'] = async function(){
     </div>
 
     <div class="section-title" style="font-size:14px">📑 מסמכים${folder.docs.length?` · ${folder.docs.length}`:''}</div>
-    <div id="fd-filter" class="fam-select" style="margin-bottom:10px">${folderFilterChips(folder)}</div>
+    ${folder.docs.length?`<div class="act-toolbar"><input type="search" class="act-search" id="fd-search" placeholder="🔍 חיפוש מסמך לפי שם, סוג או בעלים..." value="${escapeHtml(cache.folderSearch||'')}" oninput="onFolderSearch(this.value)"></div>`:''}
+    <div class="lbl" style="margin:2px 0 4px">לפי בן משפחה:</div>
+    <div id="fd-filter" class="fam-select" style="margin-bottom:8px">${folderFilterChips(folder)}</div>
+    ${folder.docs.length?`<div class="lbl" style="margin:2px 0 4px">לפי סוג מסמך:</div><div class="fam-select" style="margin-bottom:10px">${folderCatChips(folder)}</div>`:''}
     <div id="fd-docs"></div>`;
   initDropZone(el('fd-drop'), el('fd-file'), f=>{
     const t = el('fd-drop-text'), z = el('fd-drop');
@@ -2845,12 +3079,31 @@ function folderFilterChips(folder){
   return chips.map(c=>`<button class="${c.id===cur?'active':''}" onclick="setFolderFilter('${q(c.id)}')">${escapeHtml(c.name)}</button>`).join('');
 }
 function setFolderFilter(f){ cache.folderMemberFilter = f; RENDERERS['flight-folder'](); }
+function folderCatChips(folder){
+  const cur = cache.folderCatFilter || 'all';
+  const present = new Set((folder.docs||[]).map(d=>d.category||'other'));
+  const chips = [{id:'all', ic:'', label:'הכל'}, ...DOC_CATS.filter(c=>present.has(c.id))];
+  return chips.map(c=>`<button class="${c.id===cur?'active':''}" onclick="setFolderCatFilter('${q(c.id)}')">${c.ic?c.ic+' ':''}${escapeHtml(c.label)}</button>`).join('');
+}
+function setFolderCatFilter(c){ cache.folderCatFilter = c; RENDERERS['flight-folder'](); }
+let _fdSearchT;
+function onFolderSearch(v){
+  cache.folderSearch = v;
+  const all = cache._folderAll; // re-filter without a full re-render to keep focus
+  clearTimeout(_fdSearchT);
+  _fdSearchT = setTimeout(()=>{ if(all && all[cache.currentFolderFam]) renderFolderDocs(all[cache.currentFolderFam]); }, 180);
+}
 async function renderFolderDocs(folder){
   const wrap = el('fd-docs'); if(!wrap) return;
   const filter = cache.folderMemberFilter || 'all-view';
+  const catFilter = cache.folderCatFilter || 'all';
+  const search = (cache.folderSearch || '').trim().toLowerCase();
   let docs = [...(folder.docs||[])].reverse();
   if(filter !== 'all-view') docs = docs.filter(d=>(d.owners||[]).includes('all') || (d.owners||[]).includes(filter));
-  if(!docs.length){ wrap.innerHTML = '<div class="card empty-hint">אין מסמכים להצגה — העלו את הראשון למעלה.</div>'; return; }
+  if(catFilter !== 'all') docs = docs.filter(d=>(d.category||'other') === catFilter);
+  if(search) docs = docs.filter(d=>(`${d.title||''} ${docCat(d.category).label} ${(d.owners||[]).map(o=>memberName(folder,o)).join(' ')}`).toLowerCase().includes(search));
+  cache.folderDocOrder = docs.map(d=>d.id); // navigation order for the lightbox
+  if(!docs.length){ wrap.innerHTML = '<div class="card empty-hint">אין מסמכים להצגה — נסו סינון אחר או העלו מסמך חדש.</div>'; return; }
   wrap.innerHTML = docs.map(d=>{
     const cat = docCat(d.category);
     const owners = (d.owners||[]).map(o=>memberName(folder,o)).filter(Boolean);
@@ -2881,7 +3134,7 @@ function fmtSize(bytes){ // bytes here is base64 length ≈ 0.75 actual; rough d
   if(b < 1048576) return Math.round(b/1024)+' KB';
   return (b/1048576).toFixed(1)+' MB';
 }
-function selectFolderFam(name){ cache.currentFolderFam = name; cache.folderMemberFilter = 'all-view'; RENDERERS['flight-folder'](); }
+function selectFolderFam(name){ cache.currentFolderFam = name; cache.folderMemberFilter = 'all-view'; cache.folderCatFilter = 'all'; cache.folderSearch = ''; RENDERERS['flight-folder'](); }
 async function addFolderMember(){
   const inp = el('fd-member-name'); const name = (inp.value||'').trim(); if(!name) return;
   const fam = cache.currentFolderFam;
@@ -2985,14 +3238,103 @@ async function uploadFolderDoc(){
 }
 function getFolderDoc(fam, all, id){ const f = all[fam]; return f && (f.docs||[]).find(d=>d.id===id); }
 async function viewFolderDoc(id){
-  const all = await loadKey('flight-folder', {});
-  const d = getFolderDoc(cache.currentFolderFam, all, id); if(!d) return;
-  try{
-    const blob = dataUrlToBlob(d.dataUrl);
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank', 'noopener');
-    setTimeout(()=>URL.revokeObjectURL(url), 60000);
-  }catch(e){ alertModal('לא ניתן לפתוח את הקובץ', '⚠️'); }
+  const all = await loadKey('flight-folder', {}, {swr:true});
+  const folder = all[cache.currentFolderFam]; if(!folder) return;
+  const byId = {}; (folder.docs||[]).forEach(d=>byId[d.id]=d);
+  let order = (cache.folderDocOrder||[]).filter(x=>byId[x]);
+  if(!order.length) order = (folder.docs||[]).map(d=>d.id);
+  const items = order.map(did=>{
+    const d = byId[did]; const cat = docCat(d.category);
+    const owners = (d.owners||[]).map(o=>memberName(folder,o)).filter(Boolean).join(', ');
+    return { id:d.id, title:d.title, dataUrl:d.dataUrl, mime:d.mime, fileName:d.fileName, catLabel:`${cat.ic} ${cat.label}`, owners };
+  });
+  const start = Math.max(0, order.indexOf(id));
+  openDocLightbox(items, start);
+}
+
+/* ------------------------------------------------------------
+   IN-PAGE DOCUMENT LIGHTBOX — elegant full-screen preview
+   (images + PDFs) with prev/next navigation, zoom and download,
+   instead of dumping the file into a new browser tab.
+------------------------------------------------------------ */
+let _lbKeyHandler = null;
+let _lbBlobUrls = [];
+function closeDocLightbox(){
+  const ov = document.querySelector('.lightbox');
+  if(!ov) return;
+  ov.classList.remove('show');
+  if(_lbKeyHandler){ document.removeEventListener('keydown', _lbKeyHandler); _lbKeyHandler = null; }
+  _lbBlobUrls.forEach(u=>{ try{ URL.revokeObjectURL(u); }catch(e){} }); _lbBlobUrls = [];
+  setTimeout(()=>ov.remove(), 200);
+}
+function openDocLightbox(items, startIdx){
+  closeDocLightbox();
+  if(!items || !items.length) return;
+  let idx = Math.min(Math.max(0, startIdx||0), items.length-1);
+  const multi = items.length > 1;
+  const ov = document.createElement('div');
+  ov.className = 'lightbox';
+  ov.innerHTML = `
+    <div class="lb-bar">
+      <div class="lb-title" id="lb-title"></div>
+      <div class="lb-actions">
+        <button class="lb-btn" id="lb-zoom" title="הגדלה" aria-label="הגדלה">🔍</button>
+        <button class="lb-btn" id="lb-dl" title="הורדה" aria-label="הורדה">⬇️</button>
+        <button class="lb-btn lb-x" id="lb-close" title="סגירה" aria-label="סגירה">✕</button>
+      </div>
+    </div>
+    <button class="lb-nav lb-prev" id="lb-prev" aria-label="הקודם">‹</button>
+    <button class="lb-nav lb-next" id="lb-next" aria-label="הבא">›</button>
+    <div class="lb-stage" id="lb-stage" tabindex="-1"></div>
+    <div class="lb-foot">
+      <div class="lb-caption" id="lb-caption"></div>
+      <div class="lb-count" id="lb-count"></div>
+    </div>`;
+  el('modal-root').appendChild(ov);
+  requestAnimationFrame(()=>ov.classList.add('show'));
+
+  const qsel = s=>ov.querySelector(s);
+  const stage = qsel('#lb-stage');
+  function render(){
+    const it = items[idx];
+    const isImg = /^image\//.test(it.mime||'');
+    const isPdf = /pdf/.test(it.mime||'') || /\.pdf$/i.test(it.fileName||'');
+    stage.classList.remove('zoomed');
+    if(isImg){
+      stage.innerHTML = `<img class="lb-img" src="${it.dataUrl}" alt="${escapeHtml(it.title||'')}">`;
+      const img = stage.querySelector('img'); if(img) img.onclick = toggleZoom;
+    } else if(isPdf){
+      // blob URL renders far more reliably in an iframe than a giant data: URL
+      if(!it._blobUrl){ try{ it._blobUrl = URL.createObjectURL(dataUrlToBlob(it.dataUrl)); _lbBlobUrls.push(it._blobUrl); }catch(e){ it._blobUrl = it.dataUrl; } }
+      stage.innerHTML = `<iframe class="lb-frame" src="${it._blobUrl}" title="${escapeHtml(it.title||'מסמך')}"></iframe>`;
+    } else {
+      stage.innerHTML = `<div class="lb-fallback"><div class="lb-fallback-ic">📄</div><div>לא ניתן להציג סוג קובץ זה כאן</div><button class="btn btn-save" id="lb-dl2">⬇️ הורדת הקובץ</button></div>`;
+      const d2 = qsel('#lb-dl2'); if(d2) d2.onclick = download;
+    }
+    qsel('#lb-title').textContent = it.title || 'מסמך';
+    qsel('#lb-caption').innerHTML = `${it.catLabel?`<span class="lb-cat">${escapeHtml(it.catLabel)}</span>`:''}${it.owners?`<span class="lb-owners">👤 ${escapeHtml(it.owners)}</span>`:''}`;
+    qsel('#lb-count').textContent = multi ? `${idx+1} / ${items.length}` : '';
+    qsel('#lb-zoom').style.display = isImg ? '' : 'none';
+  }
+  function go(n){ if(!multi) return; idx = (idx + n + items.length) % items.length; render(); }
+  function download(){ const it=items[idx]; const a=document.createElement('a'); a.href=it.dataUrl; a.download=it.fileName||it.title||'document'; a.click(); }
+  function toggleZoom(){ stage.classList.toggle('zoomed'); }
+
+  qsel('#lb-prev').style.display = multi ? '' : 'none';
+  qsel('#lb-next').style.display = multi ? '' : 'none';
+  qsel('#lb-prev').onclick = ()=>go(-1);
+  qsel('#lb-next').onclick = ()=>go(1);
+  qsel('#lb-close').onclick = closeDocLightbox;
+  qsel('#lb-dl').onclick = download;
+  qsel('#lb-zoom').onclick = toggleZoom;
+  ov.addEventListener('click', e=>{ if(e.target===ov) closeDocLightbox(); });
+  _lbKeyHandler = e=>{
+    if(e.key==='Escape') closeDocLightbox();
+    else if(e.key==='ArrowLeft') go(1);   // RTL: left = next
+    else if(e.key==='ArrowRight') go(-1);  // RTL: right = previous
+  };
+  document.addEventListener('keydown', _lbKeyHandler);
+  render();
 }
 async function downloadFolderDoc(id){
   const all = await loadKey('flight-folder', {});
@@ -3024,7 +3366,7 @@ function dataUrlToBlob(dataUrl){
    PHOTO ALBUM — shared Google Photos link + in-page highlight grid
 ============================================================ */
 RENDERERS.photos = async function(){
-  const album = await loadKey('photo-album', { link:'', highlights:[] });
+  const album = await loadKey('photo-album', { link:'', highlights:[] }, {swr:true});
   const link = (album.link||'').trim();
   const highlights = album.highlights || [];
   const validLink = /^https?:\/\//i.test(link);
