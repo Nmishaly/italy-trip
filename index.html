@@ -577,14 +577,13 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
 .act-group-ic{font-size:14px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:7px; background:var(--surface-2);}
 .act-group-name{font-weight:700; font-size:13px; color:var(--brand);}
 .act-group-count{margin-inline-start:auto; font-size:10.5px; font-weight:700; color:var(--text-mute); background:var(--surface-2); border-radius:9px; padding:1px 8px;}
-.act-undo{flex-shrink:0; background:var(--surface-2); border:1.5px solid var(--border); border-radius:9px; width:30px; height:30px;
+.act-undo-btn{flex-shrink:0; background:var(--surface-2); border:1.5px solid var(--border); border-radius:9px; width:30px; height:30px;
   font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; align-self:center; transition:transform .1s, background .15s, border-color .15s;}
-.act-undo:hover{background:color-mix(in srgb,var(--brand) 14%,var(--surface)); border-color:var(--brand);}
-.act-undo:active{transform:scale(.9);}
+.act-undo-btn:hover{background:color-mix(in srgb,var(--brand) 14%,var(--surface)); border-color:var(--brand);}
+.act-undo-btn:active{transform:scale(.9);}
 .act-undone{opacity:.55;}
 .act-undone .act-detail, .act-undone .act-line b{text-decoration:line-through;}
 .act-undone-tag{font-size:10.5px; font-weight:700; color:var(--terra); background:color-mix(in srgb,var(--terra) 14%,transparent); padding:1px 7px; border-radius:8px;}
-.act-undo .act-ic{}
 
 /* ===== in-page document lightbox ===== */
 .lightbox{position:fixed; inset:0; z-index:300; display:flex; flex-direction:column; background:rgba(6,14,22,.92);
@@ -949,37 +948,62 @@ const UNDO_SNAP_MAX = 2500000;   // ~2.5MB — skip Undo snapshots larger than t
 const UNDO_KEEP      = 25;       // keep snapshots for the 25 most recent undoable actions
 const UNDO_BUDGET    = 4000000;  // ...within a ~4MB total budget
 
-// Persist the prior-state snapshot for an undoable action. Returns the snapshot
-// id on success, or null if it was too big / failed (→ no Undo button shown).
-async function _saveUndoSnapshot(key, snapStr){
-  if(!snapStr || snapStr.length > UNDO_SNAP_MAX) return null;
+// Persist an undo record (either a prior-state {snap} or a compact inverse {op})
+// under a fresh id, pruning the store to the newest UNDO_KEEP within UNDO_BUDGET.
+// Returns the id on success, or null if it was too big / failed (→ no Undo button).
+async function _putUndoRecord(rec){
   try{
+    const size = (rec.snap||'').length + (rec.op ? JSON.stringify(rec.op).length : 0);
+    if(!size || size > UNDO_SNAP_MAX) return null;
     const id = uid();
     const store = await loadKey('undo-store', {});
-    store[id] = { key, snap:snapStr, ts:Date.now() };
-    // prune to the newest UNDO_KEEP entries within UNDO_BUDGET bytes
+    store[id] = rec;
     const kept = {}; let total = 0, n = 0;
-    for(const [sid, rec] of Object.entries(store).sort((a,b)=>b[1].ts-a[1].ts)){
-      total += (rec.snap||'').length; n++;
-      if(n <= UNDO_KEEP && total <= UNDO_BUDGET) kept[sid] = rec;
+    for(const [sid, r] of Object.entries(store).sort((a,b)=>b[1].ts-a[1].ts)){
+      total += (r.snap||'').length + (r.op ? JSON.stringify(r.op).length : 0); n++;
+      if(n <= UNDO_KEEP && total <= UNDO_BUDGET) kept[sid] = r;
     }
-    if(!kept[id]) return null; // our snapshot didn't make the cut
+    if(!kept[id]) return null; // our record didn't make the cut
     await saveKey('undo-store', kept, true);
     return id;
   }catch(e){ return null; }
 }
 
+// Apply a compact inverse operation (used for large keys like flight-folder,
+// where snapshotting the whole key — base64 images included — would be wasteful).
+async function applyUndoOp(op){
+  if(!op || !op.kind) return;
+  if(op.kind==='folder-doc-add' || op.kind==='folder-member-add'){
+    const all = await loadKey('flight-folder', {}); const f = all[op.fam]; if(!f) return;
+    if(op.kind==='folder-doc-add')  f.docs    = (f.docs||[]).filter(d=>d.id!==op.id);
+    else                            f.members = (f.members||[]).filter(m=>m.id!==op.id);
+    await saveKey('flight-folder', all);
+  } else if(op.kind==='folder-doc-del' || op.kind==='folder-member-del'){
+    const all = await loadKey('flight-folder', {}); const f = ensureFolder(all, op.fam);
+    if(op.kind==='folder-doc-del'){
+      if(!(f.docs||[]).some(d=>d.id===op.doc.id)){ const i=Math.min(op.index==null?f.docs.length:op.index, f.docs.length); f.docs.splice(i,0,op.doc); }
+    } else {
+      if(!(f.members||[]).some(m=>m.id===op.member.id)){ const i=Math.min(op.index==null?f.members.length:op.index, f.members.length); f.members.splice(i,0,op.member); }
+    }
+    await saveKey('flight-folder', all);
+  }
+}
+
 // action: 'add' | 'edit' | 'del' | 'undo'; entity: a key from ACTIVITY_LABELS;
-// detail: free text; who: optional family name. Adds/deletes are made undoable
-// by snapshotting the entity key's prior state (captured by saveKey).
-async function logActivity(action, entity, detail, who){
+// detail: free text; who: optional family name; undoOp: optional compact inverse
+// operation (used for large keys). Adds/deletes are made undoable: by an explicit
+// undoOp when given, otherwise by snapshotting the entity key's prior state.
+async function logActivity(action, entity, detail, who, undoOp){
   try{
     const entry = { id:uid(), ts:Date.now(), action, entity, detail:(detail||'').slice(0,160), who:who||'' };
-    if(action === 'add' || action === 'del'){
+    if(undoOp){
+      const id = await _putUndoRecord({ key:entity, op:undoOp, ts:Date.now() });
+      if(id) entry.undo = { id, key:entity, action };
+    } else if(action === 'add' || action === 'del'){
       const snap = _priorValue[entity];
       if(snap !== undefined && snap !== null){
-        const sid = await _saveUndoSnapshot(entity, snap);
-        if(sid) entry.undo = { id:sid, key:entity, action };
+        const id = await _putUndoRecord({ key:entity, snap, ts:Date.now() });
+        if(id) entry.undo = { id, key:entity, action };
       }
     }
     const log = await loadKey('activity-log', []);
@@ -988,7 +1012,8 @@ async function logActivity(action, entity, detail, who){
   }catch(e){ /* logging must never break a user action */ }
 }
 
-// Reverse a previously logged add/del by restoring the entity key's prior state.
+// Reverse a previously logged add/del by restoring the entity key's prior state
+// (snapshot) or applying the stored compact inverse operation.
 async function undoActivity(entryId){
   const log = await loadKey('activity-log', []);
   const entry = log.find(e=>e.id===entryId);
@@ -998,9 +1023,8 @@ async function undoActivity(entryId){
   if(!rec){ alertModal('לא ניתן לבטל — נתוני השחזור כבר אינם זמינים (ייתכן שעבר זמן רב או שבוצעו פעולות רבות מאז).','↩️'); return; }
   const verb = ACTIVITY_VERBS[entry.action] || '';
   if(!(await confirmModal(`לבטל את הפעולה: ${verb} · ${entry.detail||ACTIVITY_LABELS[entry.entity]||''}?`, {okText:'ביטול הפעולה', icon:'↩️', danger:false}))) return;
-  let snapVal = null;
-  try{ snapVal = JSON.parse(rec.snap); }catch(e){ snapVal = null; }
-  await saveKey(rec.key, snapVal); // restore prior state
+  if(rec.op){ await applyUndoOp(rec.op); }
+  else { let snapVal=null; try{ snapVal = JSON.parse(rec.snap); }catch(e){ snapVal = null; } await saveKey(rec.key, snapVal); }
   delete store[entry.undo.id];
   await saveKey('undo-store', store, true);
   // re-load the log (it may have changed), mark the entry undone, record the reversal
@@ -2429,7 +2453,7 @@ function renderActivityGroups(rev){
               ${e.detail?`<div class="act-detail">${escapeHtml(e.detail)}</div>`:''}
             </div>
             <span class="act-time">${escapeHtml(time)}</span>
-            ${canUndo?`<button class="act-undo" title="ביטול הפעולה" aria-label="ביטול הפעולה" onclick="undoActivity('${q(e.id)}')">↩️</button>`:''}
+            ${canUndo?`<button class="act-undo-btn" title="ביטול הפעולה" aria-label="ביטול הפעולה" onclick="undoActivity('${q(e.id)}')">↩️</button>`:''}
           </div>`;
         }).join('')}
       </div>`;
@@ -3153,22 +3177,24 @@ async function addFolderMember(){
   const fam = cache.currentFolderFam;
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
-  folder.members.push({id:uid(), name});
+  const member = {id:uid(), name};
+  folder.members.push(member);
   await saveKey('flight-folder', all);
-  logActivity('add','flight-folder',`בן משפחה: ${name}`,fam);
+  logActivity('add','flight-folder',`בן משפחה: ${name}`,fam,{kind:'folder-member-add', fam, id:member.id});
   RENDERERS['flight-folder']();
 }
 async function delFolderMember(id){
   const fam = cache.currentFolderFam;
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
-  const m = folder.members.find(x=>x.id===id);
+  const idx = folder.members.findIndex(x=>x.id===id);
+  const m = folder.members[idx];
   const docCount = (folder.docs||[]).filter(d=>(d.owners||[]).includes(id)).length;
   const warn = docCount ? ` ${docCount} מסמכים משויכים אליו/ה יישארו בתיקייה ללא שיוך.` : '';
   if(!(await confirmModal(`להסיר את ${m?m.name:'בן המשפחה'} מהרשימה?${warn}`, {okText:'הסרה', icon:'👤'}))) return;
   folder.members = folder.members.filter(x=>x.id!==id);
   await saveKey('flight-folder', all);
-  logActivity('del','flight-folder',`בן משפחה: ${m?m.name:''}`,fam);
+  logActivity('del','flight-folder',`בן משפחה: ${m?m.name:''}`,fam, m?{kind:'folder-member-del', fam, member:m, index:idx}:undefined);
   RENDERERS['flight-folder']();
 }
 // Wire a drop zone to a hidden <input type=file>: drag-and-drop a file in, or
@@ -3240,9 +3266,10 @@ async function uploadFolderDoc(){
     const out = await readDocFile(file);
     const all = await loadKey('flight-folder', {});
     const folder = ensureFolder(all, fam);
-    folder.docs.push({ id:uid(), title, category, owners, fileName:out.fileName, mime:out.mime, dataUrl:out.dataUrl, size:out.size, uploadedBy:fam, ts:Date.now() });
+    const doc = { id:uid(), title, category, owners, fileName:out.fileName, mime:out.mime, dataUrl:out.dataUrl, size:out.size, uploadedBy:fam, ts:Date.now() };
+    folder.docs.push(doc);
     await saveKey('flight-folder', all);
-    logActivity('add','flight-folder',`${docCat(category).label}: ${title}`,fam);
+    logActivity('add','flight-folder',`${docCat(category).label}: ${title}`,fam,{kind:'folder-doc-add', fam, id:doc.id});
     RENDERERS['flight-folder']();
   }catch(e){
     btn.disabled = false; btn.textContent = '⬆️ העלאה לתיקייה';
@@ -3359,10 +3386,11 @@ async function delFolderDoc(id){
   const fam = cache.currentFolderFam;
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
-  const removed = folder.docs.find(d=>d.id===id);
+  const idx = folder.docs.findIndex(d=>d.id===id);
+  const removed = folder.docs[idx];
   folder.docs = folder.docs.filter(d=>d.id!==id);
   await saveKey('flight-folder', all);
-  logActivity('del','flight-folder',removed?`${docCat(removed.category).label}: ${removed.title}`:'',fam);
+  logActivity('del','flight-folder',removed?`${docCat(removed.category).label}: ${removed.title}`:'',fam, removed?{kind:'folder-doc-del', fam, doc:removed, index:idx}:undefined);
   RENDERERS['flight-folder']();
 }
 function dataUrlToBlob(dataUrl){
