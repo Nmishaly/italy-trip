@@ -499,6 +499,18 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
 .owner-tag{font-size:11px; background:color-mix(in srgb,var(--brand) 14%,transparent); color:var(--brand); padding:2px 8px; border-radius:8px; font-weight:600;}
 .doc-actions{display:flex; flex-direction:column; gap:4px; flex-shrink:0;}
 
+/* ===== drag & drop file zone ===== */
+.drop-zone{display:block; width:100%; cursor:pointer; border:2px dashed var(--border);
+  border-radius:var(--r); background:var(--surface-2); padding:18px 14px; text-align:center;
+  transition:border-color .15s, background .15s, transform .05s;}
+.drop-zone:hover{border-color:var(--accent); background:var(--surface-3);}
+.drop-zone.drag-over{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,var(--surface-2)); transform:scale(1.01);}
+.drop-zone.has-file{border-style:solid; border-color:var(--accent);}
+.drop-zone-inner{display:flex; flex-direction:column; align-items:center; gap:3px; pointer-events:none;}
+.drop-zone .drop-ic{font-size:26px; line-height:1;}
+.drop-zone .drop-text{font-size:13.5px; font-weight:600; color:var(--text); word-break:break-word;}
+.drop-zone .drop-hint{font-size:11px; color:var(--text-mute);}
+
 /* ===== photo album ===== */
 .album-cover{display:block; text-decoration:none; border-radius:18px; overflow:hidden;
   background:linear-gradient(150deg,var(--brand),#1c7ba3); color:#fff; box-shadow:var(--shadow);}
@@ -653,7 +665,7 @@ const TRIP_END   = new Date(2026,7,5);  // Aug 5 2026
 const VILLA_COORDS = [42.4219, 12.4729];
 const VILLA_ADDRESS = "Strada Vallefigliola, Otricoli, Umbria, Italy";
 
-let currentTab = "home";
+let currentTab = (function(){ try{ return localStorage.getItem('trip-tab') || "home"; }catch(e){ return "home"; } })();
 let cache = {};
 
 /* ============================================================
@@ -978,6 +990,7 @@ function closeMore(){ el('more-overlay').classList.remove('show'); }
 async function switchTab(id){
   if(!RENDERERS[id]) return;
   currentTab = id;
+  try{ localStorage.setItem('trip-tab', id); }catch(e){} // remember tab across refreshes
   buildNav();
   const main = el('main-content');
   main.innerHTML = '<div class="empty-hint">טוען…</div>';
@@ -1015,7 +1028,7 @@ async function boot(){
     setInterval(updateCountdown, 60000);
     cache.bootDone = true;
   }
-  await switchTab(currentTab || 'home');
+  await switchTab(RENDERERS[currentTab] ? currentTab : 'home');
 }
 
 /* ============================================================
@@ -1097,18 +1110,19 @@ async function exportData(){
   const a = document.createElement('a'); a.href=url; a.download='italy-trip-backup.json'; a.click();
   URL.revokeObjectURL(url);
 }
+async function importBackupData(file){
+  if(!file) return;
+  try{
+    const data = JSON.parse(await file.text());
+    for(const [key, value] of Object.entries(data)) await saveKey(key, value);
+    await switchTab(currentTab);
+    alertModal('הנתונים יובאו בהצלחה ✓','✅');
+  }catch(e2){ alertModal('קובץ לא תקין — ודאו שזה קובץ גיבוי מהאפליקציה','⚠️'); }
+}
 function triggerImport(){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='.json';
-  inp.onchange = async e => {
-    const f = e.target.files[0]; if(!f) return;
-    try{
-      const data = JSON.parse(await f.text());
-      for(const [key, value] of Object.entries(data)) await saveKey(key, value);
-      await switchTab(currentTab);
-      alertModal('הנתונים יובאו בהצלחה ✓','✅');
-    }catch(e2){ alertModal('קובץ לא תקין — ודאו שזה קובץ גיבוי מהאפליקציה','⚠️'); }
-  };
+  inp.onchange = e => importBackupData(e.target.files[0]);
   inp.click();
 }
 
@@ -1145,12 +1159,23 @@ RENDERERS.home = async function(){
     <button class="small-btn" onclick="switchTab('board')">← לכל לוח המודעות</button>
 
     <div class="section-title">💾 גיבוי נתונים</div>
-    <div class="card" style="display:flex; gap:10px;">
-      <button class="btn btn-save" style="flex:1" onclick="exportData()">⬇️ ייצוא JSON</button>
-      <button class="btn btn-accent" style="flex:1" onclick="triggerImport()">⬆️ ייבוא JSON</button>
+    <div class="card">
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-save" style="flex:1" onclick="exportData()">⬇️ ייצוא JSON</button>
+        <button class="btn btn-accent" style="flex:1" onclick="triggerImport()">⬆️ ייבוא JSON</button>
+      </div>
+      <label class="drop-zone" id="import-drop" style="margin-top:10px">
+        <input type="file" id="import-file" accept=".json" hidden>
+        <span class="drop-zone-inner">
+          <span class="drop-ic">📥</span>
+          <span class="drop-text">גררו לכאן קובץ גיבוי או לחצו לבחירה</span>
+          <span class="drop-hint">קובץ JSON מהאפליקציה</span>
+        </span>
+      </label>
     </div>
     <p class="muted" style="margin-top:4px">שמרו עותק של כל הנתונים כקובץ, או העלו גיבוי קיים.</p>
   `;
+  initDropZone(el('import-drop'), el('import-file'), f=>{ if(f) importBackupData(f); });
 };
 function famColor(name){ const i = FAMILIES.indexOf(name); return i>=0 ? FAM_COLORS[i%FAM_COLORS.length] : '#888'; }
 function noteCardHtml(n, withDel){
@@ -2752,7 +2777,16 @@ RENDERERS['flight-folder'] = async function(){
       <div class="row"><select id="fd-cat">${catOpts}</select></div>
       <div class="lbl" style="margin:4px 0 6px">שייכו את המסמך ל:</div>
       <div class="owner-checks" id="fd-owners">${ownerChecks}</div>
-      <div class="row" style="margin-top:10px"><input type="file" id="fd-file" accept="image/*,application/pdf"></div>
+      <div class="row" style="margin-top:10px">
+        <label class="drop-zone" id="fd-drop">
+          <input type="file" id="fd-file" accept="image/*,application/pdf" hidden>
+          <span class="drop-zone-inner">
+            <span class="drop-ic">📎</span>
+            <span class="drop-text" id="fd-drop-text">גררו לכאן קובץ או לחצו לבחירה</span>
+            <span class="drop-hint">תמונה או PDF · עד 12MB</span>
+          </span>
+        </label>
+      </div>
       <button class="btn btn-save btn-block" id="fd-upload-btn" onclick="uploadFolderDoc()">⬆️ העלאה לתיקייה</button>
       <p class="muted" style="margin-top:6px">תמונות נדחסות אוטומטית. ניתן להעלות גם PDF. המסמכים נשמרים מוצפנים-לכאורה רק לפי קוד הכניסה המשפחתי — אל תעלו מסמכים רגישים במיוחד אם אינכם בטוחים מי עוד ניגש לקוד.</p>
     </div>
@@ -2760,6 +2794,11 @@ RENDERERS['flight-folder'] = async function(){
     <div class="section-title" style="font-size:14px">📑 מסמכים${folder.docs.length?` · ${folder.docs.length}`:''}</div>
     <div id="fd-filter" class="fam-select" style="margin-bottom:10px">${folderFilterChips(folder)}</div>
     <div id="fd-docs"></div>`;
+  initDropZone(el('fd-drop'), el('fd-file'), f=>{
+    const t = el('fd-drop-text'), z = el('fd-drop');
+    if(f){ if(t) t.textContent = '📄 ' + f.name; if(z) z.classList.add('has-file'); }
+    else { if(t) t.textContent = 'גררו לכאן קובץ או לחצו לבחירה'; if(z) z.classList.remove('has-file'); }
+  });
   renderFolderDocs(folder);
 };
 function folderFilterChips(folder){
@@ -2827,6 +2866,32 @@ async function delFolderMember(id){
   await saveKey('flight-folder', all);
   logActivity('del','flight-folder',`בן משפחה: ${m?m.name:''}`,fam);
   RENDERERS['flight-folder']();
+}
+// Wire a drop zone to a hidden <input type=file>: drag-and-drop a file in, or
+// click to browse. `onFile` fires with the chosen File (or null when cleared).
+function initDropZone(zone, input, onFile){
+  if(!zone || !input || zone.dataset.dropReady) return;
+  zone.dataset.dropReady = '1';
+  ['dragenter','dragover'].forEach(ev=>zone.addEventListener(ev, e=>{
+    e.preventDefault(); e.stopPropagation();
+    if(e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    zone.classList.add('drag-over');
+  }));
+  ['dragleave','dragend'].forEach(ev=>zone.addEventListener(ev, e=>{
+    e.preventDefault(); e.stopPropagation();
+    if(ev==='dragleave' && zone.contains(e.relatedTarget)) return; // still inside
+    zone.classList.remove('drag-over');
+  }));
+  zone.addEventListener('drop', e=>{
+    e.preventDefault(); e.stopPropagation();
+    zone.classList.remove('drag-over');
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if(!files || !files.length) return;
+    try{ input.files = files; }
+    catch(_){ const dt = new DataTransfer(); dt.items.add(files[0]); input.files = dt.files; }
+    input.dispatchEvent(new Event('change', {bubbles:true}));
+  });
+  input.addEventListener('change', ()=>{ if(onFile) onFile(input.files && input.files[0] || null); });
 }
 // Read a file → compressed JPEG data-URL for images, raw data-URL otherwise.
 function readDocFile(file){
