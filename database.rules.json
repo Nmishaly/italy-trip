@@ -17,6 +17,9 @@
     "stay-flights":            { ".read": true, ".write": true },
     "preflight":               { ".read": true, ".write": true },
     "meal-rota":               { ".read": true, ".write": true },
-    "shopping-list":           { ".read": true, ".write": true }
+    "shopping-list":           { ".read": true, ".write": true },
+    "activity-log":            { ".read": true, ".write": true },
+    "flight-folder":           { ".read": true, ".write": true },
+    "photo-album":             { ".read": true, ".write": true }
   }
 }

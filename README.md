@@ -31,7 +31,11 @@ No installation. No account. No technical setup required by family members — j
 | **Pre-Trip Tasks** | Assignable to-do list (passports, insurance, eSIMs, etc.) with family responsibility labels |
 | **Pre-Flight Checklist** | Per-family departure checklist so nothing gets forgotten at the airport |
 | **Emergency Contacts** | Quick-access list: villa host, Israeli embassy, Italian emergency services, and local synagogue |
-| **Family Board** | Announcement board for updates, reminders, and messages — newest posts shown on the home screen |
+| **Family Board** | Announcement board for updates, reminders, and messages — newest posts shown on the home screen. Posts support threaded comments, available both on the Board and directly from the home-screen "recent updates" |
+| **Recent Activity** | A site-wide audit log: every add / edit / delete across the app is recorded with a timestamp and a short description, grouped by day (today / yesterday / date) |
+| **Flight Folder** | A per-family document folder for passports, flight tickets, travel insurance, and international driving licenses. Each family has an editable member list (seeded with the two adults, add children freely) and **every document is tagged to the specific people it belongs to — down to the individual child**. Images are auto-compressed; PDFs are supported. View / download / delete per document, filter by family member |
+| **Photo Album** | A shared **Google Photos** album: one-tap to open the album for uploading from the phone, plus an in-page highlight grid (paste image URLs) that blends into the site design. The album link is shared via Firebase so everyone sees the same album |
+| **Wallet / Travel Pass** | A screenshot-friendly boarding-pass-style card on the Flights screen summarizing both flights, dates, routes and the villa confirmation code — save it to the phone's photos, or print / save as PDF |
 | **Who Brings What** | Per-family consolidated packing view that merges a family's personal list with the shared items tagged to them, with live progress |
 | **Inline Editing** | Edit items in place across packing, tasks, contacts, places, kosher, attractions and pre-flight lists |
 | **Interactive Trip Map** | Leaflet/OpenStreetMap map with category filters, per-point navigation, smart place/address search, delete-from-map, and distance-from-villa |
@@ -67,7 +71,7 @@ The layout adapts to your device:
 
 The header also has a 🔍 **search** button (or press `Ctrl/Cmd+K`) to jump to anything instantly, and a 🌙/☀️ button to switch between light and dark mode.
 
-Full list of sections: Home, Itinerary, Trip Map, Places, Attractions, Flights & Villa, Kosher & Shabbat, Kosher near the Villa, Meal Rota, Packing, Tasks, Pre-flight Checklist, Contacts, and the Board.
+Full list of sections: Home, Itinerary, Trip Map, Places, Attractions, Flights & Villa, Kosher & Shabbat, Kosher near the Villa, Meal Rota, Packing, Tasks, Pre-flight Checklist, Contacts, the Board, Recent Activity, the Flight Folder, and the Photo Album.
 
 ---
 
@@ -107,7 +111,7 @@ The app is intentionally simple — a single HTML file with no build step, no pa
 
 ```
 italy-trip/
-├── index.html       # The entire application (HTML + CSS + JS, ~2,300 lines)
+├── index.html       # The entire application (HTML + CSS + JS, ~3,000 lines)
 ├── manifest.json    # PWA manifest for "Add to Home Screen" support
 ├── icon-192.png     # (Optional) App icon for home screen, 192×192px
 ├── icon-512.png     # (Optional) App icon for home screen, 512×512px
@@ -194,11 +198,17 @@ It ships **disabled**. To turn it on:
 
 ### Key Architecture Decisions
 
-**Single-file design:** Chosen deliberately so the app can be shared as a link with zero setup. There is no npm, no bundler, and no build dependencies. All logic lives in one file (~2,300 lines), which is fine for this scale.
+**Single-file design:** Chosen deliberately so the app can be shared as a link with zero setup. There is no npm, no bundler, and no build dependencies. All logic lives in one file (~3,000 lines), which is fine for this scale.
 
 **Firebase REST API (not SDK):** The app calls Firebase via plain `fetch()` rather than importing the Firebase JS SDK. This avoids adding a ~80KB dependency to a file designed to stay minimal and load fast on mobile data.
 
-**localStorage as offline cache:** Every Firebase read/write is mirrored to `localStorage` under a `trip-` prefix. If Firebase is unreachable, `loadKey()` automatically falls back to the cached version. This means the app is fully readable offline after at least one successful load.
+**localStorage as offline cache:** Every Firebase read/write is mirrored to `localStorage` under a `trip-` prefix. If Firebase is unreachable, `loadKey()` automatically falls back to the cached version. This means the app is fully readable offline after at least one successful load. (`saveKey()` tolerates a `localStorage` quota error — e.g. from large uploaded documents — and keeps syncing to Firebase regardless.)
+
+**Flight-folder documents stored as data-URLs in the database:** Because the app has no backend and no Firebase Storage bucket, uploaded documents (passport scans, tickets, etc.) are kept inline in the Realtime Database under the `flight-folder` key. Images are downscaled to ≤1500px and re-encoded as JPEG (quality 0.82) on the client *before* upload to keep them small; PDFs are stored as-is (capped at 12MB). This is intentionally suited to a handful of modest documents per family — if the trip needs to store many large files, switching the upload path to Firebase Storage would be the natural next step. Each document carries an `owners` array of member IDs (or the special `all`), which is how ownership is tracked down to the individual child.
+
+**Google Photos is link-based, not API-embedded:** Google Photos provides no way to upload to, or iframe-embed, a shared album from a static client without OAuth and a server. The Photo Album tab therefore stores a shared-album **link** (synced via the `photo-album` key) and opens Google Photos for uploads, while offering an in-page highlight grid (manually-added image URLs) for a designed preview that matches the site.
+
+**Activity log:** A single `logActivity(action, entity, detail, who)` helper appends to the `activity-log` key (capped at the last 300 entries, written silently so it doesn't double-toast). It is called from every add/edit/delete site across the renderers, which is why mutations were instrumented individually rather than centralized in `saveKey()` — only the call site knows the human-readable description of what changed.
 
 **Theming via CSS custom properties:** A single set of design tokens (`--bg`, `--surface`, `--brand`, etc.) defined under `:root` and `[data-theme="dark"]` drives the entire UI, so light/dark mode is a one-attribute switch with no per-component overrides.
 
