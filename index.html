@@ -523,6 +523,26 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
 .album-tile img{width:100%; height:100%; object-fit:cover; display:block;}
 .album-cap{position:absolute; inset-inline:0; bottom:0; background:linear-gradient(transparent,rgba(0,0,0,.65)); color:#fff; font-size:11px; padding:14px 7px 5px;}
 .album-tile-x{position:absolute; top:5px; inset-inline-end:5px; width:22px; height:22px; border:none; border-radius:50%; background:rgba(0,0,0,.5); color:#fff; font-size:11px; cursor:pointer; line-height:1;}
+/* preview slideshow (carousel) at the top of the album page */
+.album-carousel{position:relative; border-radius:18px; overflow:hidden; aspect-ratio:16/10; margin-bottom:16px;
+  background:var(--surface-2); border:1px solid var(--border-soft); box-shadow:var(--shadow);}
+.album-carousel-track{position:absolute; inset:0;}
+.album-slide{position:absolute; inset:0; opacity:0; transition:opacity .8s ease; text-decoration:none; pointer-events:none;}
+.album-slide.active{opacity:1; pointer-events:auto;}
+.album-slide img{width:100%; height:100%; object-fit:cover; display:block;}
+.album-slide-cap{position:absolute; inset-inline:0; bottom:0; padding:34px 16px 16px;
+  background:linear-gradient(transparent,rgba(0,0,0,.72)); color:#fff; font-size:15px; font-weight:700;}
+.album-carousel-badge{position:absolute; top:10px; inset-inline-start:10px; z-index:3;
+  background:rgba(0,0,0,.45); color:#fff; font-size:12px; padding:5px 11px; border-radius:20px;}
+.album-carousel-nav{position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%;
+  background:rgba(0,0,0,.42); color:#fff; border:none; font-size:20px; line-height:1; cursor:pointer; z-index:3;
+  display:flex; align-items:center; justify-content:center;}
+.album-carousel-nav:hover{background:rgba(0,0,0,.62);}
+.album-carousel-nav.prev{inset-inline-start:8px;}
+.album-carousel-nav.next{inset-inline-end:8px;}
+.album-carousel-dots{position:absolute; inset-inline:0; bottom:10px; z-index:3; display:flex; justify-content:center; gap:7px;}
+.album-dot{width:8px; height:8px; padding:0; border:none; border-radius:50%; background:rgba(255,255,255,.5); cursor:pointer; transition:width .25s,background .25s;}
+.album-dot.active{width:20px; border-radius:4px; background:#fff;}
 
 /* ===== wallet pass ===== */
 .wallet-pass{background:linear-gradient(160deg,var(--brand),#1c7ba3); color:#fff; border-radius:18px; padding:18px; box-shadow:var(--shadow);}
@@ -987,10 +1007,19 @@ function openMore(){
 }
 function closeMore(){ el('more-overlay').classList.remove('show'); }
 
-async function switchTab(id){
+async function switchTab(id, opts){
   if(!RENDERERS[id]) return;
+  opts = opts || {};
   currentTab = id;
   try{ localStorage.setItem('trip-tab', id); }catch(e){} // remember tab across refreshes
+  // sync the browser history so the device back/forward buttons move between tabs
+  if(!opts.fromPop){
+    const url = '#' + id;
+    try{
+      if(opts.replace || location.hash === url) history.replaceState({tab:id}, '', url);
+      else history.pushState({tab:id}, '', url);
+    }catch(e){}
+  }
   buildNav();
   const main = el('main-content');
   main.innerHTML = '<div class="empty-hint">טוען…</div>';
@@ -1028,7 +1057,9 @@ async function boot(){
     setInterval(updateCountdown, 60000);
     cache.bootDone = true;
   }
-  await switchTab(RENDERERS[currentTab] ? currentTab : 'home');
+  let startTab = (location.hash||'').replace(/^#/,'');
+  if(!RENDERERS[startTab]) startTab = RENDERERS[currentTab] ? currentTab : 'home';
+  await switchTab(startTab, {replace:true});
 }
 
 /* ============================================================
@@ -1093,6 +1124,13 @@ function initGlobalListeners(){
   document.addEventListener('keydown', e=>{
     if((e.ctrlKey||e.metaKey) && (e.key==='k'||e.key==='K')){ e.preventDefault(); if(el('app').style.display!=='none') openSearch(); }
     if(e.key==='Escape'){ closeSearch(); closeMore(); }
+  });
+  // back/forward (browser buttons on desktop, swipe/back gesture on mobile) move between tabs
+  window.addEventListener('popstate', e=>{
+    if(el('app').style.display==='none') return;
+    let id = (e.state && e.state.tab) || (location.hash||'').replace(/^#/,'');
+    if(!RENDERERS[id]) id = currentTab;
+    if(id && id !== currentTab) switchTab(id, {fromPop:true});
   });
 }
 
@@ -3001,6 +3039,21 @@ RENDERERS.photos = async function(){
        </a>`
     : `<div class="card empty-hint">עדיין לא הוגדר קישור לאלבום. הדביקו למטה קישור לאלבום משותף ב-Google Photos.</div>`;
 
+  const carousel = highlights.length
+    ? `<div class="album-carousel" id="album-carousel">
+         <div class="album-carousel-track">${highlights.map((h,i)=>`
+           <a class="album-slide ${i===0?'active':''}" href="${escapeHtml(validLink?link:h.url)}" target="_blank" rel="noopener">
+             <img src="${escapeHtml(h.url)}" alt="${escapeHtml(h.caption||'תמונה מהאלבום')}" loading="${i===0?'eager':'lazy'}">
+             ${h.caption?`<span class="album-slide-cap">${escapeHtml(h.caption)}</span>`:''}
+           </a>`).join('')}</div>
+         <span class="album-carousel-badge">📸 ${highlights.length} תמונות מהאלבום</span>
+         ${highlights.length>1?`
+           <button class="album-carousel-nav prev" data-car-nav="prev" aria-label="הקודם">‹</button>
+           <button class="album-carousel-nav next" data-car-nav="next" aria-label="הבא">›</button>
+           <div class="album-carousel-dots">${highlights.map((h,i)=>`<button class="album-dot ${i===0?'active':''}" data-car-dot="${i}" aria-label="תמונה ${i+1}"></button>`).join('')}</div>`:''}
+       </div>`
+    : '';
+
   const grid = highlights.length
     ? `<div class="album-grid">${highlights.map(h=>`
         <a class="album-tile" href="${escapeHtml(validLink?link:h.url)}" target="_blank" rel="noopener" title="${escapeHtml(h.caption||'')}">
@@ -3011,6 +3064,7 @@ RENDERERS.photos = async function(){
     : '<div class="card empty-hint">אפשר להדביק כתובות תמונה (URL) כדי להציג כאן תצוגה מקדימה יפה של האלבום.</div>';
 
   el('main-content').innerHTML = `
+    ${carousel}
     <div class="section-title">🖼️ אלבום תמונות</div>
     <p class="section-sub">אלבום משותף ב-Google Photos — כולם יכולים להעלות ולצפות. כאן אפשר לפתוח את האלבום וגם להציג תצוגה מקדימה משולבת בעיצוב האתר.</p>
     ${cover}
@@ -3038,7 +3092,36 @@ RENDERERS.photos = async function(){
       <p class="muted" style="margin-top:6px">להוספת תמונה לתצוגה: פתחו תמונה ב-Google Photos → שיתוף → העתקת קישור, או השתמשו בכל כתובת תמונה ישירה.</p>
     </div>
     ${grid}`;
+  initAlbumCarousel();
 };
+let albumCarouselTimer = null;
+function initAlbumCarousel(){
+  if(albumCarouselTimer){ clearInterval(albumCarouselTimer); albumCarouselTimer = null; }
+  const car = document.getElementById('album-carousel');
+  if(!car) return;
+  const slides = Array.from(car.querySelectorAll('.album-slide'));
+  const dots = Array.from(car.querySelectorAll('.album-dot'));
+  if(slides.length <= 1) return;
+  let idx = 0;
+  const show = n=>{
+    idx = (n + slides.length) % slides.length;
+    slides.forEach((s,i)=>s.classList.toggle('active', i===idx));
+    dots.forEach((d,i)=>d.classList.toggle('active', i===idx));
+  };
+  const start = ()=>{
+    if(albumCarouselTimer) clearInterval(albumCarouselTimer);
+    albumCarouselTimer = setInterval(()=>{
+      if(!document.body.contains(car)){ clearInterval(albumCarouselTimer); albumCarouselTimer = null; return; }
+      show(idx + 1);
+    }, 4500);
+  };
+  car.querySelectorAll('[data-car-nav]').forEach(btn=>{
+    btn.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation();
+      show(idx + (btn.getAttribute('data-car-nav')==='next' ? 1 : -1)); start(); });
+  });
+  dots.forEach((d,i)=> d.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); show(i); start(); }));
+  start();
+}
 async function saveAlbumLink(){
   const link = (el('album-link').value||'').trim();
   const album = await loadKey('photo-album', { link:'', highlights:[] });
