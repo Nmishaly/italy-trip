@@ -597,9 +597,81 @@ let cache = {};
 const FIREBASE_URL = "https://engel-italy-trip-default-rtdb.firebaseio.com";
 const LS_PREFIX = 'trip-';
 
+/* ============================================================
+   FIREBASE APP CHECK  (optional anti-abuse hardening)
+   ------------------------------------------------------------
+   App Check verifies that requests come from THIS app (via an
+   invisible reCAPTCHA v3 check) before the database accepts them,
+   without forcing family members to log in.
+
+   It is DISABLED by default — leave APPCHECK_SITE_KEY empty and the
+   app behaves exactly as before (no SDK loaded, no extra requests).
+
+   To turn it on:
+   1. Firebase Console → Project settings → General → "Your apps":
+      register a Web app if you don't have one, then copy its
+      firebaseConfig values into FIREBASE_CONFIG below.
+   2. Firebase Console → App Check → Apps: register THIS web app with
+      the "reCAPTCHA v3" provider and copy the generated site key into
+      APPCHECK_SITE_KEY below.
+   3. Firebase Console → App Check → APIs → Realtime Database: keep it
+      on "Monitor" (un-enforced) at first. Open the app, make an edit,
+      confirm requests show up as "Verified", and only THEN switch to
+      "Enforce".  (If anything looks wrong, the helper below fails open
+      so the app keeps working; enforcing is the deliberate final step.)
+============================================================ */
+const APPCHECK_SITE_KEY = "6LdmljMtAAAAABGbx7ZdIGnVixeoFm0DQL2Dq59W";          // reCAPTCHA v3 site key — empty = App Check OFF
+const FIREBASE_CONFIG = {              // from Firebase Console → Project settings
+  apiKey: "AIzaSyAp7ZcYrum1RXoozN_mas0TIfvM8fkMWxc",
+  authDomain: "engel-italy-trip.firebaseapp.com",
+  databaseURL: "https://engel-italy-trip-default-rtdb.firebaseio.com",
+  projectId: "engel-italy-trip",
+  storageBucket: "engel-italy-trip.firebasestorage.app",
+  messagingSenderId: "956322669877",
+  appId: "1:956322669877:web:1d76d7539978e6ab94187c",
+  measurementId: "G-1H2DKE8Y1T"
+};
+const FIREBASE_SDK_VERSION = "10.12.2";
+
+let _appCheckReady = null;
+function _loadScript(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = resolve; s.onerror = ()=>reject(new Error('failed to load '+src));
+    document.head.appendChild(s);
+  });
+}
+function initAppCheck(){
+  if(!APPCHECK_SITE_KEY) return Promise.resolve(null);   // disabled → no-op
+  if(_appCheckReady) return _appCheckReady;
+  _appCheckReady = (async ()=>{
+    try{
+      const base = `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}`;
+      await _loadScript(`${base}/firebase-app-compat.js`);
+      await _loadScript(`${base}/firebase-app-check-compat.js`);
+      if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      const ac = firebase.appCheck();
+      ac.activate(new firebase.appCheck.ReCaptchaV3Provider(APPCHECK_SITE_KEY), true);
+      return ac;
+    }catch(e){ console.warn('App Check unavailable, continuing without it', e); return null; }
+  })();
+  return _appCheckReady;
+}
+// Returns the App Check header to merge into a fetch, or {} if disabled/unavailable.
+async function appCheckHeaders(){
+  if(!APPCHECK_SITE_KEY) return {};
+  try{
+    const ac = await initAppCheck();
+    if(!ac) return {};
+    const { token } = await ac.getToken(false);
+    return token ? { 'X-Firebase-AppCheck': token } : {};
+  }catch(e){ return {}; }
+}
+
 async function loadKey(key, fallback){
   try{
-    const res = await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`);
+    const res = await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, { headers: await appCheckHeaders() });
     if(!res.ok) throw new Error('bad response');
     const data = await res.json();
     if(data === null || data === undefined){
@@ -619,7 +691,9 @@ async function saveKey(key, value){
   localStorage.setItem(LS_PREFIX + key, JSON.stringify(value));
   try{
     await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, {
-      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value)
+      method:'PUT',
+      headers:{'Content-Type':'application/json', ...(await appCheckHeaders())},
+      body: JSON.stringify(value)
     });
     setFbStatus(true);
     showToast('נשמר ✓');
@@ -637,7 +711,7 @@ function setFbStatus(ok, offline=false){
 }
 async function checkFbConnection(){
   try{
-    const res = await fetch(`${FIREBASE_URL}/.json?shallow=true`, {signal: AbortSignal.timeout(5000)});
+    const res = await fetch(`${FIREBASE_URL}/.json?shallow=true`, {headers: await appCheckHeaders(), signal: AbortSignal.timeout(5000)});
     setFbStatus(res.ok);
   }catch(e){ setFbStatus(false); }
 }
@@ -846,6 +920,7 @@ function updateCountdown(){
 
 async function boot(){
   updateCountdown();
+  initAppCheck();          // no-op unless APPCHECK_SITE_KEY is set; warms the token early
   checkFbConnection();
   if(!cache.bootDone){
     setInterval(checkFbConnection, 30000);

@@ -177,7 +177,20 @@ The hardened rules in [`database.rules.json`](database.rules.json) are the recom
 
 Paste the full contents of `database.rules.json` into **Firebase Console → Realtime Database → Rules → Publish** (this changes only the rules, never the data).
 
-> **Residual risk.** These rules stop the worst case (full-database deletion / arbitrary writes) but, by design, still allow anyone with the URL to read and edit the family data — that is unavoidable for an unauthenticated client. To also restrict *who* can read/write, add real protection: enable [Firebase App Check](https://firebase.google.com/docs/app-check) (verifies requests come from your app, no per-user login) or switch the client to Firebase Authentication and require `auth != null` in the rules. Both are larger changes that require code updates to `index.html`.
+> **Residual risk.** These rules stop the worst case (full-database deletion / arbitrary writes) but, by design, still allow anyone with the URL to read and edit the family data — that is unavoidable for an unauthenticated client. To also restrict *who* can read/write, add **Firebase App Check** (below) or switch the client to Firebase Authentication and require `auth != null` in the rules.
+
+### Firebase App Check (recommended next layer)
+
+[App Check](https://firebase.google.com/docs/app-check) blocks requests that don't originate from *your* app — using an invisible reCAPTCHA v3 check — **without** asking family members to log in. The wiring is already built into `index.html` (it loads the Firebase SDK on demand, attaches an App Check token via the `X-Firebase-AppCheck` header on every Realtime Database REST call, and **fails open** so the app keeps working if App Check is unreachable).
+
+It ships **disabled**. To turn it on:
+
+1. **Get your `firebaseConfig`** — Firebase Console → ⚙️ Project settings → *General* → *Your apps*. Register a Web app if there isn't one, then copy `apiKey`, `authDomain`, `projectId`, `appId` into the `FIREBASE_CONFIG` object in `index.html`.
+2. **Register for App Check** — Firebase Console → *App Check* → *Apps* → register this web app with the **reCAPTCHA v3** provider. Copy the generated **site key** into `APPCHECK_SITE_KEY` in `index.html`.
+3. **Roll out in Monitor mode first** — Firebase Console → *App Check* → *APIs* → *Realtime Database*: leave it **un-enforced (Monitor)**. Open the app, make an edit, and confirm in the App Check dashboard that requests register as **Verified**.
+4. **Enforce** — once verified traffic looks healthy, switch Realtime Database to **Enforce**. From then on, requests without a valid App Check token are rejected.
+
+> Tip: because the header turns each request into a CORS preflight, do the Monitor-mode check (step 3) before enforcing — that confirms the browser ↔ database round-trip works end to end with zero risk to live data.
 
 ### Key Architecture Decisions
 
