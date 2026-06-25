@@ -158,18 +158,26 @@ To adapt this app for a different event or family:
 3. Replace the `FIREBASE_URL` constant with your new database URL.
 4. Update `ACCESS_CODE`, `FAMILIES`, `TRIP_START`, `TRIP_END`, and the hardcoded flight/villa details in the `defaultStay()` function.
 
-**Recommended Firebase security rules** (restrict reads/writes to authenticated sessions — or at minimum, prevent public deletion):
+**Firebase security rules.** Because the app talks to Firebase over the unauthenticated REST API (no Firebase Auth — the `ACCESS_CODE` is only checked client-side), the rules must keep the data keys publicly readable/writable for sync to work. Fully open rules (`.read: true` / `.write: true` at the **root**) are dangerous, though: anyone with the URL can wipe the entire database or inject arbitrary keys in a single request, and Firebase emails a warning about them.
+
+The hardened rules in [`database.rules.json`](database.rules.json) are the recommended baseline. They lock the database **root** (no root-level write, no unknown keys) while keeping public read/write only on the known data keys, so existing data and live sync are completely unaffected:
 
 ```json
 {
   "rules": {
     ".read": true,
-    ".write": true
+    ".write": false,
+    "itinerary-days": { ".read": true, ".write": true },
+    "places":         { ".read": true, ".write": true },
+    "board":          { ".read": true, ".write": true }
+    // ...one entry per data key; see database.rules.json for the full list
   }
 }
 ```
 
-> For a private family app, "test mode" (open read/write) is acceptable since the URL is not publicly indexed and the access code adds a social layer of protection. For production use, consider [Firebase App Check](https://firebase.google.com/docs/app-check).
+Paste the full contents of `database.rules.json` into **Firebase Console → Realtime Database → Rules → Publish** (this changes only the rules, never the data).
+
+> **Residual risk.** These rules stop the worst case (full-database deletion / arbitrary writes) but, by design, still allow anyone with the URL to read and edit the family data — that is unavoidable for an unauthenticated client. To also restrict *who* can read/write, add real protection: enable [Firebase App Check](https://firebase.google.com/docs/app-check) (verifies requests come from your app, no per-user login) or switch the client to Firebase Authentication and require `auth != null` in the rules. Both are larger changes that require code updates to `index.html`.
 
 ### Key Architecture Decisions
 

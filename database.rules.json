@@ -1,0 +1,22 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": false,
+
+    "itinerary-days":          { ".read": true, ".write": true },
+    "places":                  { ".read": true, ".write": true },
+    "villa-attractions-custom":{ ".read": true, ".write": true },
+    "kosher-spots":            { ".read": true, ".write": true },
+    "synagogues":              { ".read": true, ".write": true },
+    "contacts":                { ".read": true, ".write": true },
+    "packing-shared":          { ".read": true, ".write": true },
+    "packing-personal":        { ".read": true, ".write": true },
+    "tasks":                   { ".read": true, ".write": true },
+    "board":                   { ".read": true, ".write": true },
+    "map-pins":                { ".read": true, ".write": true },
+    "stay-flights":            { ".read": true, ".write": true },
+    "preflight":               { ".read": true, ".write": true },
+    "meal-rota":               { ".read": true, ".write": true },
+    "shopping-list":           { ".read": true, ".write": true }
+  }
+}
