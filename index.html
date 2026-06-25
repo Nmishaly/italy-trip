@@ -756,14 +756,27 @@ async function saveKey(key, value, silent=false){
   try{ localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); }
   catch(e){ /* quota exceeded (e.g. large documents) — keep syncing to Firebase anyway */ }
   try{
-    await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, {
+    const res = await fetch(`${FIREBASE_URL}/${encodeURIComponent(key)}.json`, {
       method:'PUT',
       headers:{'Content-Type':'application/json', ...(await appCheckHeaders())},
       body: JSON.stringify(value)
     });
+    // Firebase returns an HTTP error (e.g. 401 Permission denied) WITHOUT a network
+    // failure, so we must check res.ok — otherwise a rejected write looks "saved".
+    if(!res.ok){
+      let reason = '';
+      try{ const j = await res.json(); reason = j && j.error ? j.error : ''; }catch(_){}
+      throw new Error(reason || ('HTTP ' + res.status));
+    }
     setFbStatus(true);
     if(!silent) showToast('נשמר ✓');
-  }catch(e){ setFbStatus(false); }
+  }catch(e){
+    setFbStatus(false);
+    if(!silent){
+      const perm = /permission denied/i.test(e && e.message || '');
+      showToast(perm ? '⚠️ לא נשמר בענן — חסר אישור הרשאות ל-Firebase' : '⚠️ לא נשמר בענן — בדקו חיבור');
+    }
+  }
 }
 
 /* ============================================================
