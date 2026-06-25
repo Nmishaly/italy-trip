@@ -603,6 +603,10 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
 .lb-stage.zoomed{align-items:flex-start; justify-content:center;}
 .lb-stage.zoomed .lb-img{max-width:none; max-height:none; width:auto; cursor:zoom-out; transform:scale(1.8); transform-origin:top center;}
 .lb-frame{width:100%; height:100%; border:none; border-radius:10px; background:#fff; box-shadow:0 18px 60px rgba(0,0,0,.5);}
+.lb-stage.lb-pdf-stage{display:block; padding:6px 10px;}
+.lb-pdf{display:flex; flex-direction:column; align-items:center; gap:12px; width:100%;}
+.lb-pdf-page{display:block; width:100%; max-width:900px; border-radius:8px; box-shadow:0 12px 36px rgba(0,0,0,.5); background:#fff;}
+.lb-pdf-loading{color:#cbd5e1; font-size:14px; text-align:center; padding:30px 0;}
 .lb-fallback{color:#fff; text-align:center; display:flex; flex-direction:column; gap:14px; align-items:center; font-size:14px;}
 .lb-fallback-ic{font-size:64px;}
 .lb-nav{position:absolute; top:50%; transform:translateY(-50%); z-index:2; background:rgba(255,255,255,.16); border:none; color:#fff;
@@ -3335,18 +3339,22 @@ function openDocLightbox(items, startIdx){
 
   const qsel = s=>ov.querySelector(s);
   const stage = qsel('#lb-stage');
+  let renderTok = 0;
   function render(){
     const it = items[idx];
     const isImg = /^image\//.test(it.mime||'');
     const isPdf = /pdf/.test(it.mime||'') || /\.pdf$/i.test(it.fileName||'');
+    const myTok = ++renderTok;
     stage.classList.remove('zoomed');
+    stage.classList.toggle('lb-pdf-stage', isPdf);
     if(isImg){
       stage.innerHTML = `<img class="lb-img" src="${it.dataUrl}" alt="${escapeHtml(it.title||'')}">`;
       const img = stage.querySelector('img'); if(img) img.onclick = toggleZoom;
     } else if(isPdf){
-      // blob URL renders far more reliably in an iframe than a giant data: URL
-      if(!it._blobUrl){ try{ it._blobUrl = URL.createObjectURL(dataUrlToBlob(it.dataUrl)); _lbBlobUrls.push(it._blobUrl); }catch(e){ it._blobUrl = it.dataUrl; } }
-      stage.innerHTML = `<iframe class="lb-frame" src="${it._blobUrl}" title="${escapeHtml(it.title||'מסמך')}"></iframe>`;
+      // Mobile browsers won't render a PDF inline inside an <iframe> — they show a
+      // grey "open file" placeholder instead. Rendering each page to a <canvas> with
+      // PDF.js previews reliably everywhere, with a download/open fallback if it fails.
+      renderPdf(stage, it, myTok, ()=>renderTok);
     } else {
       stage.innerHTML = `<div class="lb-fallback"><div class="lb-fallback-ic">📄</div><div>לא ניתן להציג סוג קובץ זה כאן</div><button class="btn btn-save" id="lb-dl2">⬇️ הורדת הקובץ</button></div>`;
       const d2 = qsel('#lb-dl2'); if(d2) d2.onclick = download;
@@ -3401,6 +3409,89 @@ function dataUrlToBlob(dataUrl){
   const arr = new Uint8Array(data.length);
   for(let i=0;i<data.length;i++) arr[i] = data.charCodeAt(i);
   return new Blob([arr], {type:mime});
+}
+function dataUrlToUint8(dataUrl){
+  const parts = dataUrl.split(',');
+  const isB64 = /;base64/.test(parts[0]);
+  const data = isB64 ? atob(parts[1]) : decodeURIComponent(parts[1]);
+  const arr = new Uint8Array(data.length);
+  for(let i=0;i<data.length;i++) arr[i] = data.charCodeAt(i);
+  return arr;
+}
+/* Lazily load PDF.js (UMD build) the first time a PDF preview is opened. */
+let _pdfjsPromise = null;
+function ensurePdfJs(){
+  if(window.pdfjsLib && window.pdfjsLib.getDocument) return Promise.resolve(window.pdfjsLib);
+  if(_pdfjsPromise) return _pdfjsPromise;
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  _pdfjsPromise = new Promise((resolve,reject)=>{
+    const s = document.createElement('script');
+    s.src = base + 'pdf.min.js';
+    s.onload = ()=>{
+      try{
+        if(window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions)
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      }catch(e){ reject(e); }
+    };
+    s.onerror = ()=>{ _pdfjsPromise = null; reject(new Error('pdfjs load failed')); };
+    document.head.appendChild(s);
+  });
+  return _pdfjsPromise;
+}
+/* Open a PDF in a new browser tab (where the device's own viewer handles it). */
+function openPdfNewTab(it){
+  try{
+    if(!it._blobUrl){ it._blobUrl = URL.createObjectURL(dataUrlToBlob(it.dataUrl)); _lbBlobUrls.push(it._blobUrl); }
+    const w = window.open(it._blobUrl, '_blank');
+    if(!w){ const a=document.createElement('a'); a.href=it._blobUrl; a.target='_blank'; a.rel='noopener'; a.click(); }
+  }catch(e){
+    const a=document.createElement('a'); a.href=it.dataUrl; a.download=it.fileName||it.title||'document'; a.click();
+  }
+}
+/* Render every page of a PDF to <canvas> inside the lightbox stage. */
+async function renderPdf(stage, it, myTok, currentTok){
+  stage.innerHTML = `<div class="lb-pdf-loading">טוען תצוגה מקדימה…</div>`;
+  try{
+    const pdfjs = await ensurePdfJs();
+    if(currentTok() !== myTok) return; // user already navigated away
+    const pdf = await pdfjs.getDocument({data: dataUrlToUint8(it.dataUrl)}).promise;
+    if(currentTok() !== myTok){ try{ pdf.destroy(); }catch(e){} return; }
+    const wrap = document.createElement('div');
+    wrap.className = 'lb-pdf';
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const targetW = Math.min((stage.clientWidth || 900) - 20, 1100);
+    for(let p=1; p<=pdf.numPages; p++){
+      const page = await pdf.getPage(p);
+      if(currentTok() !== myTok){ try{ pdf.destroy(); }catch(e){} return; }
+      const base = page.getViewport({scale:1});
+      const scale = (targetW / base.width) * dpr;
+      const vp = page.getViewport({scale});
+      const canvas = document.createElement('canvas');
+      canvas.className = 'lb-pdf-page';
+      canvas.width = vp.width; canvas.height = vp.height;
+      await page.render({canvasContext: canvas.getContext('2d'), viewport: vp}).promise;
+      if(currentTok() !== myTok){ try{ pdf.destroy(); }catch(e){} return; }
+      wrap.appendChild(canvas);
+    }
+    stage.innerHTML = '';
+    stage.appendChild(wrap);
+  }catch(e){
+    if(currentTok() !== myTok) return;
+    stage.classList.remove('lb-pdf-stage');
+    stage.innerHTML = `<div class="lb-fallback">
+        <div class="lb-fallback-ic">📄</div>
+        <div>${escapeHtml(it.title||'מסמך PDF')}</div>
+        <div style="color:#cbd5e1; font-size:13px">לא ניתן להציג כאן את ה-PDF במכשיר זה.</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center">
+          <button class="btn btn-save" id="lb-open">↗️ פתיחה בכרטיסייה חדשה</button>
+          <button class="btn" id="lb-dl3">⬇️ הורדה</button>
+        </div></div>`;
+    const op = stage.querySelector('#lb-open'); if(op) op.onclick = ()=>openPdfNewTab(it);
+    const d3 = stage.querySelector('#lb-dl3'); if(d3) d3.onclick = ()=>{
+      const a=document.createElement('a'); a.href=it.dataUrl; a.download=it.fileName||it.title||'document'; a.click();
+    };
+  }
 }
 
 /* ============================================================
