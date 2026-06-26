@@ -347,6 +347,35 @@ a.link{color:var(--brand); font-weight:600;}
   border-radius:8px; padding:3px 9px; margin-top:6px; margin-inline-start:31px; display:inline-block; font-weight:600;}
 .who-group-label{font-size:12px; font-weight:700; color:var(--text-soft); margin:14px 0 6px; display:flex; align-items:center; gap:7px;}
 
+/* packing categories */
+.pack-item-top.editing{flex-wrap:wrap;}
+.cat-filter{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;}
+.cat-filter.sub{margin-top:-6px; margin-bottom:12px; padding-inline-start:6px;}
+.cat-chip{background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:5px 11px; font-size:12px; font-weight:600; color:var(--text-soft); cursor:pointer; white-space:nowrap;}
+.cat-chip.active{background:var(--brand); color:#fff; border-color:var(--brand);}
+.cat-filter.sub .cat-chip{font-weight:500; padding:4px 10px; font-size:11.5px;}
+.cat-filter.sub .cat-chip.active{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+.pack-cat-block{margin-bottom:4px;}
+.pack-cat-head{display:flex; align-items:center; gap:7px; font-size:13px; font-weight:800; color:var(--brand); padding:11px 0 6px; border-bottom:2px solid var(--border); margin-bottom:2px;}
+.pack-cat-count{background:var(--surface-2); color:var(--text-soft); border-radius:9px; font-size:11px; padding:1px 7px; font-weight:700;}
+.pack-sub-label{font-size:11.5px; font-weight:700; color:var(--text-soft); margin:9px 0 1px; padding-inline-start:4px; display:flex; align-items:center; gap:5px;}
+.pack-sub-label::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--accent); display:inline-block;}
+.cat-select{border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; font-size:12px; background:var(--surface); color:var(--text); max-width:150px;}
+.cat-tag{font-size:10px; font-weight:700; color:var(--text-mute); background:var(--surface-2); border-radius:7px; padding:2px 7px; white-space:nowrap; margin-inline-start:4px;}
+.pack-add-row{display:flex; flex-wrap:wrap; gap:7px; align-items:center;}
+.pack-add-row>input[type=text]{flex:1; min-width:120px;}
+.manage-cats-btn{margin-top:10px; font-size:13px; width:100%;}
+.cats-manager{margin-top:10px;}
+.cat-manage-row{padding:10px 0; border-bottom:1px solid var(--border-soft);}
+.cat-manage-row:last-of-type{border-bottom:none;}
+.cat-manage-head{display:flex; align-items:center; gap:8px; font-weight:700; font-size:13.5px;}
+.cat-manage-head>span:first-child{flex:1; min-width:0;}
+.sub-pills{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; padding-inline-start:4px;}
+.sub-pill{display:inline-flex; align-items:center; gap:5px; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; padding:3px 9px; font-size:11.5px; color:var(--text-soft);}
+.sub-pill .sub-x{border:none; background:none; cursor:pointer; color:var(--text-mute); font-size:12px; line-height:1; padding:0;}
+.add-sub-btn{border:1.5px dashed var(--border); background:none; border-radius:11px; padding:3px 10px; font-size:11.5px; color:var(--text-soft); cursor:pointer;}
+.m-input{width:100%; padding:11px 12px; border:1.5px solid var(--brand); border-radius:9px; font-size:14px; margin:6px 0 2px; background:var(--surface); color:var(--text); box-sizing:border-box;}
+
 /* meal rota */
 .meal-slot{border-top:1px solid var(--border-soft); padding-top:11px; margin-top:10px;}
 .meal-slot:first-child{border-top:none; padding-top:0; margin-top:0;}
@@ -941,7 +970,7 @@ async function saveKey(key, value, silent=false){
 const ACTIVITY_LABELS = {
   'places':'מקומות לבקר', 'villa-attractions-custom':'אטרקציות', 'kosher-spots':'מסעדות כשרות',
   'synagogues':'בתי כנסת', 'contacts':'אנשי קשר', 'packing-shared':'אריזה משותפת',
-  'packing-personal':'אריזה אישית', 'tasks':'מטלות', 'preflight':'הכנות לטיסה',
+  'packing-personal':'אריזה אישית', 'pack-categories':'קטגוריות אריזה', 'tasks':'מטלות', 'preflight':'הכנות לטיסה',
   'board':'לוח מודעות', 'itinerary-days':'מסלול', 'meal-rota':'רוטציית מטבח',
   'shopping-list':'רשימת קניות', 'map-pins':'נקודות במפה', 'stay-flights':'לינה וטיסות',
   'flight-folder':'תיקיית הטיסה', 'photo-album':'אלבום תמונות'
@@ -1169,6 +1198,29 @@ function alertModal(message, icon='ℹ️'){
     ov.querySelector('[data-act=ok]').onclick = close;
   });
 }
+function promptModal(message, opts={}){
+  const {okText='שמירה', cancelText='ביטול', icon='✏️', value='', placeholder=''} = opts;
+  return new Promise(resolve=>{
+    const root = el('modal-root');
+    const ov = document.createElement('div');
+    ov.className='modal-overlay';
+    ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+      <div class="m-ic">${icon}</div>
+      <div class="m-msg">${escapeHtml(message)}</div>
+      <input type="text" class="m-input" id="prompt-input" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">
+      <div class="m-btns">
+        <button class="btn btn-ghost" data-act="cancel">${escapeHtml(cancelText)}</button>
+        <button class="btn btn-save" data-act="ok">${escapeHtml(okText)}</button>
+      </div></div>`;
+    root.appendChild(ov);
+    requestAnimationFrame(()=>{ ov.classList.add('show'); const i=el('prompt-input'); if(i){ i.focus(); i.select(); } });
+    const close = (val)=>{ ov.classList.remove('show'); setTimeout(()=>ov.remove(),200); resolve(val); };
+    ov.querySelector('[data-act=ok]').onclick = ()=>close(el('prompt-input').value.trim());
+    ov.querySelector('[data-act=cancel]').onclick = ()=>close(null);
+    el('prompt-input').addEventListener('keydown', e=>{ if(e.key==='Enter') close(el('prompt-input').value.trim()); if(e.key==='Escape') close(null); });
+    ov.addEventListener('click', e=>{ if(e.target===ov) close(null); });
+  });
+}
 
 /* ============================================================
    AUTH
@@ -1362,7 +1414,7 @@ function initGlobalListeners(){
 const RENDERERS = {};
 
 async function exportData(){
-  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list','map-pins','activity-log','flight-folder','photo-album'];
+  const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','pack-categories','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list','map-pins','activity-log','flight-folder','photo-album'];
   const out = {};
   for(const k of keys){ const v = await loadKey(k, null); if(v !== null) out[k] = v; }
   const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
@@ -2032,16 +2084,129 @@ async function delCustomAttraction(id){
 }
 
 /* ---------- PACKING ---------- */
-function defaultSharedPacking(){
-  return ["שקית כלים חד-פעמיים + סכו״ם","נייר כסף ומגבונים לחים","תרופות בסיסיות וערכת עזרה ראשונה","מתאם חשמל לאיטליה","סבון/אבקת כביסה קטנה","כדורי אגירה / מטען נייד"]
-    .map(t=>({id:uid(), text:t, done:false, assignedTo:[]}));
+function defaultPackCategories(){
+  return [
+    {id:'kitchen',  icon:'🍳', label:'מטבח',              subs:[{id:'equip',label:'ציוד (סירים, מחבתות...)'},{id:'food',label:'אוכל מהארץ'}]},
+    {id:'games',    icon:'🎲', label:'משחקים ופנאי',       subs:[]},
+    {id:'beach',    icon:'🏖️', label:'חוף ובריכה',         subs:[]},
+    {id:'electric', icon:'🔌', label:'חשמל ומכשירים',      subs:[]},
+    {id:'cleaning', icon:'🧼', label:'ניקיון והיגיינה',     subs:[]},
+    {id:'firstaid', icon:'🩹', label:'עזרה ראשונה ותרופות', subs:[]},
+    {id:'clothing', icon:'👕', label:'ביגוד',              subs:[]},
+    {id:'docs',     icon:'🛂', label:'מסמכים וכספים',       subs:[]},
+    {id:'general',  icon:'📦', label:'כללי',               subs:[]}
+  ];
 }
-function defaultPersonalPacking(){ return ["דרכון","מטען טלפון","כובע/משקפי שמש","בגד ים","תרופות אישיות"].map(t=>({id:uid(),text:t,done:false})); }
+function defaultSharedPacking(){
+  return [
+    {text:"שקית כלים חד-פעמיים + סכו״ם",        cat:'kitchen',  sub:'equip'},
+    {text:"נייר כסף ומגבונים לחים",             cat:'kitchen',  sub:'equip'},
+    {text:"תרופות בסיסיות וערכת עזרה ראשונה",   cat:'firstaid', sub:''},
+    {text:"מתאם חשמל לאיטליה",                  cat:'electric', sub:''},
+    {text:"סבון/אבקת כביסה קטנה",               cat:'cleaning', sub:''},
+    {text:"כדורי אגירה / מטען נייד",            cat:'electric', sub:''}
+  ].map(o=>({id:uid(), text:o.text, done:false, assignedTo:[], cat:o.cat, sub:o.sub}));
+}
+function defaultPersonalPacking(){
+  return [
+    {text:"דרכון",              cat:'docs',     sub:''},
+    {text:"מטען טלפון",          cat:'electric', sub:''},
+    {text:"כובע/משקפי שמש",      cat:'beach',    sub:''},
+    {text:"בגד ים",             cat:'beach',    sub:''},
+    {text:"תרופות אישיות",       cat:'firstaid', sub:''}
+  ].map(o=>({id:uid(), text:o.text, done:false, cat:o.cat, sub:o.sub}));
+}
+/* ---- category helpers ---- */
+function packCats(){ return cache.packCats || defaultPackCategories(); }
+function findCat(id){ return packCats().find(c=>c.id===id); }
+function effCat(it){ const id=it&&it.cat; return findCat(id) ? id : 'general'; }
+function catLabel(id){ const c=findCat(id); return c?`${c.icon} ${c.label}`:'📦 כללי'; }
+function subLabel(catId,subId){ const c=findCat(catId); if(!c||!c.subs)return''; const s=c.subs.find(x=>x.id===subId); return s?s.label:''; }
+function applyPackFilter(items){
+  const cf=cache.packCatFilter||'all', sf=cache.packSubFilter||'all';
+  return (items||[]).filter(it=>{
+    if(cf!=='all' && effCat(it)!==cf) return false;
+    if(cf!=='all' && sf!=='all' && it.sub!==sf) return false;
+    return true;
+  });
+}
+// group items by category (in category order), with sub-grouping for categories that have subs
+function groupItems(items, render){
+  const cats=packCats();
+  return cats.map(c=>{
+    const inCat=(items||[]).filter(it=>effCat(it)===c.id);
+    if(!inCat.length) return null;
+    const g={cat:c, count:inCat.length, render};
+    if(c.subs && c.subs.length){
+      const subGroups=[];
+      c.subs.forEach(s=>{ const its=inCat.filter(it=>it.sub===s.id); if(its.length) subGroups.push({sub:s, items:its}); });
+      const noSub=inCat.filter(it=>!it.sub || !c.subs.some(s=>s.id===it.sub));
+      if(noSub.length) subGroups.push({sub:null, items:noSub});
+      g.subGroups=subGroups;
+    } else { g.items=inCat; }
+    return g;
+  }).filter(Boolean);
+}
+function renderCatGroup(g){
+  let inner;
+  if(g.subGroups){
+    inner = g.subGroups.map(sg=>`${sg.sub?`<div class="pack-sub-label">${escapeHtml(sg.sub.label)}</div>`:`<div class="pack-sub-label">ללא תת-קטגוריה</div>`}${sg.items.map(g.render).join('')}`).join('');
+  } else { inner = g.items.map(g.render).join(''); }
+  return `<div class="pack-cat-block"><div class="pack-cat-head">${g.cat.icon} ${escapeHtml(g.cat.label)} <span class="pack-cat-count">${g.count}</span></div>${inner}</div>`;
+}
+function catFilterHtml(){
+  const cats=packCats(); const cur=cache.packCatFilter||'all';
+  const chips=[`<button class="cat-chip${cur==='all'?' active':''}" onclick="setCatFilter('all')">הכל</button>`]
+    .concat(cats.map(c=>`<button class="cat-chip${cur===c.id?' active':''}" onclick="setCatFilter('${c.id}')">${c.icon} ${escapeHtml(c.label)}</button>`)).join('');
+  let subRow='';
+  if(cur!=='all'){ const c=findCat(cur); if(c && c.subs && c.subs.length){ const cs=cache.packSubFilter||'all';
+    subRow=`<div class="cat-filter sub">`+[`<button class="cat-chip${cs==='all'?' active':''}" onclick="setSubFilter('all')">הכל</button>`]
+      .concat(c.subs.map(s=>`<button class="cat-chip${cs===s.id?' active':''}" onclick="setSubFilter('${s.id}')">${escapeHtml(s.label)}</button>`)).join('')+`</div>`; } }
+  return `<div class="cat-filter">${chips}</div>${subRow}`;
+}
+function setCatFilter(c){ cache.packCatFilter=c; cache.packSubFilter='all'; cache.editPack=null; renderPackBody(); }
+function setSubFilter(s){ cache.packSubFilter=s; renderPackBody(); }
+/* inline category selectors (edit mode) */
+function catSelectInline(scope, it){
+  const cats=packCats(); const cat=effCat(it);
+  const catSel=`<select class="cat-select" aria-label="קטגוריה" onchange="setItemCat('${scope}','${it.id}',this.value)">${cats.map(c=>`<option value="${c.id}"${c.id===cat?' selected':''}>${c.icon} ${escapeHtml(c.label)}</option>`).join('')}</select>`;
+  const c=findCat(cat); let subSel='';
+  if(c && c.subs && c.subs.length){
+    subSel=`<select class="cat-select" aria-label="תת-קטגוריה" onchange="setItemSub('${scope}','${it.id}',this.value)"><option value=""${it.sub?'':' selected'}>— תת-קטגוריה —</option>${c.subs.map(s=>`<option value="${s.id}"${s.id===it.sub?' selected':''}>${escapeHtml(s.label)}</option>`).join('')}</select>`;
+  }
+  return catSel+subSel;
+}
+function packEditRow(scope, it){
+  return `<input class="edit-inline" id="pack-edit-input" value="${escapeHtml(it.text)}" onkeydown="if(event.key==='Enter')savePackEdit('${scope}','${it.id}');if(event.key==='Escape')cancelPackEdit()">`
+    + catSelectInline(scope, it)
+    + `<button class="btn-icon" aria-label="שמירה" onclick="savePackEdit('${scope}','${it.id}')">✓</button><button class="btn-icon" aria-label="ביטול" onclick="cancelPackEdit()">✕</button>`;
+}
+/* add-form helpers (shared/personal) */
+function addSubSelectHtml(scope, catId){
+  const c=findCat(catId); if(!c || !c.subs || !c.subs.length) return '';
+  const def=(cache.packCatFilter===catId && cache.packSubFilter && cache.packSubFilter!=='all') ? cache.packSubFilter : '';
+  return `<select class="cat-select" id="${scope}-add-sub"><option value="">— תת-קטגוריה —</option>${c.subs.map(s=>`<option value="${s.id}"${s.id===def?' selected':''}>${escapeHtml(s.label)}</option>`).join('')}</select>`;
+}
+function addFormHtml(scope){
+  const cats=packCats();
+  const inputId=scope==='shared'?'shared-new':'personal-new';
+  const addFn=scope==='shared'?'addShared()':'addPersonal()';
+  const ph=scope==='shared'?'הוספת פריט משותף...':'הוספת פריט אישי...';
+  const defCat=(cache.packCatFilter && cache.packCatFilter!=='all') ? cache.packCatFilter : 'general';
+  const catSel=`<select class="cat-select" id="${scope}-add-cat" onchange="onAddCatChange('${scope}')">${cats.map(c=>`<option value="${c.id}"${c.id===defCat?' selected':''}>${c.icon} ${escapeHtml(c.label)}</option>`).join('')}</select>`;
+  return `<div class="pack-add-row" style="margin-top:10px">
+    <input type="text" id="${inputId}" placeholder="${ph}" onkeydown="if(event.key==='Enter')${addFn}">
+    ${catSel}<span id="${scope}-add-sub-wrap">${addSubSelectHtml(scope, defCat)}</span>
+    <button class="btn btn-add" onclick="${addFn}">+</button></div>`;
+}
+function onAddCatChange(scope){
+  const sel=el(scope+'-add-cat'); if(!sel) return;
+  const wrap=el(scope+'-add-sub-wrap'); if(wrap) wrap.innerHTML=addSubSelectHtml(scope, sel.value);
+}
 function normTxt(s){ return (s||'').trim().toLowerCase(); }
 function progressHtml(done,total){ const pct=total?Math.round(done/total*100):0; return `<div class="progress-wrap"><div class="progress"><i style="width:${pct}%"></i></div><span class="progress-label">${done}/${total} · ${pct}%</span></div>`; }
 function famSelectHtml(fn, active){ active=active||cache.currentPerson; return `<div class="fam-select">${FAMILIES.map(f=>`<button class="${f===active?'active':''}" onclick="${fn}('${q(f)}')">${escapeHtml(f)}</button>`).join('')}</div>`; }
 function isEditingPack(scope,id){ return cache.editPack && cache.editPack.scope===scope && cache.editPack.id===id; }
-function packEditInput(scope,id,text){ return `<input class="edit-inline" id="pack-edit-input" value="${escapeHtml(text)}" onkeydown="if(event.key==='Enter')savePackEdit('${scope}','${id}');if(event.key==='Escape')cancelPackEdit()"><button class="btn-icon" aria-label="שמירה" onclick="savePackEdit('${scope}','${id}')">✓</button><button class="btn-icon" aria-label="ביטול" onclick="cancelPackEdit()">✕</button>`; }
 
 RENDERERS.packing = async function(){
   if(!cache.packView) cache.packView='shared';
@@ -2061,65 +2226,87 @@ function selectPackPerson(name){ cache.currentPerson=name; cache.editPack=null; 
 async function renderPackBody(){
   const shared = await loadKey('packing-shared', null, {swr:true}) || defaultSharedPacking();
   if(!cache.packInit){ await saveKey('packing-shared', shared); cache.packInit=true; }
+  let cats = await loadKey('pack-categories', null, {swr:true});
+  if(!Array.isArray(cats) || !cats.length) cats = defaultPackCategories();
+  if(!cats.some(c=>c.id==='general')) cats.push({id:'general', icon:'📦', label:'כללי', subs:[]});
+  cache.packCats = cats;
+  if(!cache.packCatsInit){ await saveKey('pack-categories', cats, true); cache.packCatsInit=true; }
   const personalAll = await loadKey('packing-personal', {}, {swr:true});
   if(!cache.currentPerson) cache.currentPerson = FAMILIES[0];
+  if(!cache.packCatFilter) cache.packCatFilter='all';
+  if(!cache.packSubFilter) cache.packSubFilter='all';
   const body = el('pack-body'); if(!body) return;
   const v = cache.packView || 'shared';
   body.innerHTML = v==='shared' ? viewShared(shared) : v==='personal' ? viewPersonal(personalAll, shared) : viewWho(personalAll, shared);
   if(cache.editPack){ const i=el('pack-edit-input'); if(i){ i.focus(); i.select(); } }
 }
+function sharedItemHtml(it){
+  const editing = isEditingPack('shared', it.id);
+  const assigned = it.assignedTo||[];
+  const chips = FAMILIES.map(f=>{ const on=assigned.includes(f); return `<label class="assign-chip${on?' active':''}"><input type="checkbox"${on?' checked':''} onchange="togglePackingAssignment('${it.id}','${q(f)}',this.checked)">${escapeHtml(f)}</label>`; }).join('');
+  return `<div class="pack-item">
+    <div class="pack-item-top${it.done?' done':''}${editing?' editing':''}">
+      <input type="checkbox"${it.done?' checked':''} onchange="toggleSharedDone('${it.id}',this.checked)">
+      ${editing ? packEditRow('shared', it)
+        : `<span class="txt">${escapeHtml(it.text)}</span><button class="btn-icon" aria-label="עריכה" onclick="editPack('shared','${it.id}')">✏️</button><button class="btn-del" aria-label="מחיקה" onclick="delShared('${it.id}')">✕</button>`}
+    </div>
+    <div class="pack-assign-row"><span class="muted" style="font-size:10.5px;flex-shrink:0">👥 מי מביא:</span>${chips}</div>
+  </div>`;
+}
 function viewShared(shared){
   const done = shared.filter(x=>x.done).length;
-  const rows = shared.length ? shared.map(it=>{
-    const editing = isEditingPack('shared', it.id);
-    const assigned = it.assignedTo||[];
-    const chips = FAMILIES.map(f=>{ const on=assigned.includes(f); return `<label class="assign-chip${on?' active':''}"><input type="checkbox"${on?' checked':''} onchange="togglePackingAssignment('${it.id}','${q(f)}',this.checked)">${escapeHtml(f)}</label>`; }).join('');
-    return `<div class="pack-item">
-      <div class="pack-item-top${it.done?' done':''}">
-        <input type="checkbox"${it.done?' checked':''} onchange="toggleSharedDone('${it.id}',this.checked)">
-        ${editing ? packEditInput('shared', it.id, it.text)
-          : `<span class="txt">${escapeHtml(it.text)}</span><button class="btn-icon" aria-label="עריכה" onclick="editPack('shared','${it.id}')">✏️</button><button class="btn-del" aria-label="מחיקה" onclick="delShared('${it.id}')">✕</button>`}
-      </div>
-      <div class="pack-assign-row"><span class="muted" style="font-size:10.5px;flex-shrink:0">👥 מי מביא:</span>${chips}</div>
-    </div>`;
-  }).join('') : '<div class="empty-hint">הרשימה ריקה</div>';
-  return progressHtml(done, shared.length) + `<div class="card">${rows}
-    <div class="row" style="margin-top:10px"><input type="text" id="shared-new" placeholder="הוספת פריט משותף..." onkeydown="if(event.key==='Enter')addShared()"><button class="btn btn-add" onclick="addShared()">+</button></div></div>
-    <p class="muted">סמנו אילו משפחות מביאות כל פריט — הסיכום מופיע בלשונית "מי מביא מה".</p>`;
+  const filtered = applyPackFilter(shared);
+  const groups = groupItems(filtered, sharedItemHtml);
+  const rows = !shared.length ? '<div class="empty-hint">הרשימה ריקה</div>'
+    : (groups.length ? groups.map(renderCatGroup).join('') : '<div class="empty-hint">אין פריטים בסינון הנוכחי</div>');
+  return progressHtml(done, shared.length) + catFilterHtml() + `<div class="card">${rows}
+    ${addFormHtml('shared')}</div>
+    ${manageCatsHtml()}
+    <p class="muted">הפריטים מקובצים לפי קטגוריה. סמנו אילו משפחות מביאות כל פריט — הסיכום מופיע בלשונית "מי מביא מה".</p>`;
+}
+function personalItemHtml(it){
+  const fam = cache.currentPerson;
+  const editing = isEditingPack('personal', it.id);
+  const dup = cache._packSharedTexts && cache._packSharedTexts.has(normTxt(it.text));
+  return `<div class="pack-item"><div class="pack-item-top${it.done?' done':''}${editing?' editing':''}">
+    <input type="checkbox"${it.done?' checked':''} onchange="togglePersonalDone('${q(fam)}','${it.id}',this.checked)">
+    ${editing ? packEditRow('personal', it)
+      : `<span class="txt">${escapeHtml(it.text)}</span><button class="btn-icon" aria-label="עריכה" onclick="editPack('personal','${it.id}')">✏️</button><button class="btn-del" aria-label="מחיקה" onclick="delPersonalItem('${q(fam)}','${it.id}')">✕</button>`}
+    </div>${dup?`<div class="dup-hint">💡 כבר קיים ברשימה המשותפת</div>`:''}</div>`;
 }
 function viewPersonal(personalAll, shared){
   const fam = cache.currentPerson;
   const list = personalAll[fam] || defaultPersonalPacking();
   const done = list.filter(x=>x.done).length;
-  const sharedTexts = new Set((shared||[]).map(s=>normTxt(s.text)));
-  const rows = list.length ? list.map(it=>{
-    const editing = isEditingPack('personal', it.id);
-    const dup = sharedTexts.has(normTxt(it.text));
-    return `<div class="pack-item"><div class="pack-item-top${it.done?' done':''}">
-      <input type="checkbox"${it.done?' checked':''} onchange="togglePersonalDone('${q(fam)}','${it.id}',this.checked)">
-      ${editing ? packEditInput('personal', it.id, it.text)
-        : `<span class="txt">${escapeHtml(it.text)}</span><button class="btn-icon" aria-label="עריכה" onclick="editPack('personal','${it.id}')">✏️</button><button class="btn-del" aria-label="מחיקה" onclick="delPersonalItem('${q(fam)}','${it.id}')">✕</button>`}
-      </div>${dup?`<div class="dup-hint">💡 כבר קיים ברשימה המשותפת</div>`:''}</div>`;
-  }).join('') : '<div class="empty-hint">הרשימה ריקה</div>';
-  return famSelectHtml('selectPackPerson', fam) + progressHtml(done, list.length) + `<div class="card">${rows}
-    <div class="row" style="margin-top:10px"><input type="text" id="personal-new" placeholder="הוספת פריט אישי..." onkeydown="if(event.key==='Enter')addPersonal()"><button class="btn btn-add" onclick="addPersonal()">+</button></div></div>`;
+  cache._packSharedTexts = new Set((shared||[]).map(s=>normTxt(s.text)));
+  const filtered = applyPackFilter(list);
+  const groups = groupItems(filtered, personalItemHtml);
+  const rows = !list.length ? '<div class="empty-hint">הרשימה ריקה</div>'
+    : (groups.length ? groups.map(renderCatGroup).join('') : '<div class="empty-hint">אין פריטים בסינון הנוכחי</div>');
+  return famSelectHtml('selectPackPerson', fam) + progressHtml(done, list.length) + catFilterHtml() + `<div class="card">${rows}
+    ${addFormHtml('personal')}</div>`;
+}
+function whoRowHtml(scope, it){
+  const fam = cache.currentPerson;
+  const toggle = scope==='personal' ? `togglePersonalDone('${q(fam)}','${it.id}',this.checked)` : `toggleSharedDone('${it.id}',this.checked)`;
+  return `<div class="checkrow${it.done?' done':''}"><input type="checkbox"${it.done?' checked':''} onchange="${toggle}"><span class="txt">${escapeHtml(it.text)}</span>${scope==='shared'?'<span class="tag shared">משותף</span>':''}</div>`;
 }
 function viewWho(personalAll, shared){
   const fam = cache.currentPerson;
-  const personal = personalAll[fam] || defaultPersonalPacking();
-  const sharedAssigned = (shared||[]).filter(s=>(s.assignedTo||[]).includes(fam));
-  const totalDone = personal.filter(x=>x.done).length + sharedAssigned.filter(x=>x.done).length;
-  const total = personal.length + sharedAssigned.length;
-  const whoRow = (scope,it)=>{
-    const toggle = scope==='personal' ? `togglePersonalDone('${q(fam)}','${it.id}',this.checked)` : `toggleSharedDone('${it.id}',this.checked)`;
-    return `<div class="checkrow${it.done?' done':''}"><input type="checkbox"${it.done?' checked':''} onchange="${toggle}"><span class="txt">${escapeHtml(it.text)}</span>${scope==='shared'?'<span class="tag shared">משותף</span>':''}</div>`;
-  };
-  const persRows = personal.length ? personal.map(it=>whoRow('personal',it)).join('') : '<div class="empty-hint">אין פריטים אישיים</div>';
-  const shRows = sharedAssigned.length ? sharedAssigned.map(it=>whoRow('shared',it)).join('') : '<div class="empty-hint">לא שויכו פריטים מהרשימה המשותפת</div>';
-  return famSelectHtml('selectPackPerson', fam) + progressHtml(totalDone, total) +
+  const personalFull = personalAll[fam] || defaultPersonalPacking();
+  const sharedAssignedFull = (shared||[]).filter(s=>(s.assignedTo||[]).includes(fam));
+  const totalDone = personalFull.filter(x=>x.done).length + sharedAssignedFull.filter(x=>x.done).length;
+  const total = personalFull.length + sharedAssignedFull.length;
+  const personal = applyPackFilter(personalFull);
+  const sharedAssigned = applyPackFilter(sharedAssignedFull);
+  const persGroups = groupItems(personal, it=>whoRowHtml('personal',it));
+  const shGroups = groupItems(sharedAssigned, it=>whoRowHtml('shared',it));
+  const persRows = personal.length ? persGroups.map(renderCatGroup).join('') : '<div class="empty-hint">אין פריטים אישיים בסינון</div>';
+  const shRows = sharedAssigned.length ? shGroups.map(renderCatGroup).join('') : '<div class="empty-hint">לא שויכו פריטים מהרשימה המשותפת</div>';
+  return famSelectHtml('selectPackPerson', fam) + progressHtml(totalDone, total) + catFilterHtml() +
     `<div class="who-group-label">🧍 הרשימה האישית של ${escapeHtml(fam)}</div><div class="card">${persRows}</div>
      <div class="who-group-label">🎒 מהרשימה המשותפת — משויך אליכם</div><div class="card">${shRows}</div>
-     <p class="muted">תצוגה זו מאחדת את הרשימה האישית של המשפחה עם הפריטים המשותפים ששויכו אליה.</p>`;
+     <p class="muted">תצוגה זו מאחדת את הרשימה האישית של המשפחה עם הפריטים המשותפים ששויכו אליה, מקובצים לפי קטגוריה.</p>`;
 }
 function editPack(scope,id){ cache.editPack={scope,id}; renderPackBody(); }
 function cancelPackEdit(){ cache.editPack=null; renderPackBody(); }
@@ -2133,10 +2320,133 @@ async function savePackEdit(scope,id){
 async function toggleSharedDone(id,checked){ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(it)it.done=checked; await saveKey('packing-shared',list); if(it)logActivity('edit','packing-shared',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`); renderPackBody(); }
 async function togglePackingAssignment(id,family,checked){ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(!it)return; if(!it.assignedTo)it.assignedTo=[]; if(checked){ if(!it.assignedTo.includes(family))it.assignedTo.push(family); } else { it.assignedTo=it.assignedTo.filter(f=>f!==family); } await saveKey('packing-shared',list); renderPackBody(); }
 async function delShared(id){ if(!(await confirmModal('למחוק את הפריט?')))return; let list=await loadKey('packing-shared',[]); const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); await saveKey('packing-shared',list); logActivity('del','packing-shared',removed?removed.text:''); renderPackBody(); }
-async function addShared(){ const i=el('shared-new'); const v=i.value.trim(); if(!v)return; const list=await loadKey('packing-shared',[]); list.push({id:uid(),text:v,done:false,assignedTo:[]}); await saveKey('packing-shared',list); logActivity('add','packing-shared',v); renderPackBody(); }
+async function addShared(){ const i=el('shared-new'); const v=i.value.trim(); if(!v)return; const cat=(el('shared-add-cat')||{}).value||'general'; const sub=(el('shared-add-sub')||{}).value||''; const list=await loadKey('packing-shared',[]); list.push({id:uid(),text:v,done:false,assignedTo:[],cat,sub}); await saveKey('packing-shared',list); logActivity('add','packing-shared',v); renderPackBody(); }
 async function togglePersonalDone(fam,id,checked){ const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('packing-personal',all); if(it)logActivity('edit','packing-personal',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPackBody(); }
 async function delPersonalItem(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; const all=await loadKey('packing-personal',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('packing-personal',all); logActivity('del','packing-personal',removed?removed.text:'',fam); renderPackBody(); }
-async function addPersonal(){ const i=el('personal-new'); const v=i.value.trim(); if(!v)return; const fam=cache.currentPerson; const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); list.push({id:uid(),text:v,done:false}); all[fam]=list; await saveKey('packing-personal',all); logActivity('add','packing-personal',v,fam); renderPackBody(); }
+async function addPersonal(){ const i=el('personal-new'); const v=i.value.trim(); if(!v)return; const cat=(el('personal-add-cat')||{}).value||'general'; const sub=(el('personal-add-sub')||{}).value||''; const fam=cache.currentPerson; const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); list.push({id:uid(),text:v,done:false,cat,sub}); all[fam]=list; await saveKey('packing-personal',all); logActivity('add','packing-personal',v,fam); renderPackBody(); }
+
+/* ---- change an item's category / sub-category (preserving any unsaved edited text) ---- */
+function pendingEditText(){ const i=el('pack-edit-input'); return i ? i.value.trim() : undefined; }
+async function setItemCat(scope, id, cat){
+  const t = pendingEditText();
+  const fields = {cat, sub:''};
+  if(t) fields.text = t;
+  await updatePackItem(scope, id, fields);
+  logActivity('edit', scope==='shared'?'packing-shared':'packing-personal', `קטגוריה → ${catLabel(cat)}`, scope==='personal'?cache.currentPerson:undefined);
+  renderPackBody();
+}
+async function setItemSub(scope, id, sub){
+  const t = pendingEditText();
+  const fields = {sub};
+  if(t) fields.text = t;
+  await updatePackItem(scope, id, fields);
+  renderPackBody();
+}
+async function updatePackItem(scope, id, fields){
+  if(scope==='shared'){
+    const list = await loadKey('packing-shared', []);
+    const it = list.find(x=>x.id===id); if(!it) return;
+    Object.assign(it, fields);
+    await saveKey('packing-shared', list);
+  } else {
+    const fam = cache.currentPerson;
+    const all = await loadKey('packing-personal', {});
+    const list = all[fam] || defaultPersonalPacking();
+    const it = list.find(x=>x.id===id); if(!it) return;
+    Object.assign(it, fields);
+    all[fam] = list;
+    await saveKey('packing-personal', all);
+  }
+}
+
+/* ---- category management ---- */
+function manageCatsHtml(){
+  const open = !!cache.packManageCats;
+  return `<button class="btn btn-ghost manage-cats-btn" onclick="toggleManageCats()">🗂️ ${open?'סגירת ניהול קטגוריות':'ניהול קטגוריות'}</button>${open?renderCatsManager():''}`;
+}
+function toggleManageCats(){ cache.packManageCats=!cache.packManageCats; renderPackBody(); }
+function renderCatsManager(){
+  const cats = packCats();
+  const rows = cats.map(c=>{
+    const subs = (c.subs||[]).map(s=>`<span class="sub-pill">${escapeHtml(s.label)} <button class="sub-x" onclick="delSubCat('${c.id}','${s.id}')" title="מחיקת תת-קטגוריה">✕</button></span>`).join('');
+    const delBtn = c.id==='general' ? '' : `<button class="btn-del" onclick="delCat('${c.id}')" title="מחיקת קטגוריה">✕</button>`;
+    return `<div class="cat-manage-row">
+      <div class="cat-manage-head"><span>${c.icon} ${escapeHtml(c.label)}</span>
+        <button class="btn-icon" onclick="renameCat('${c.id}')" title="שינוי שם">✏️</button>${delBtn}</div>
+      <div class="sub-pills">${subs}<button class="add-sub-btn" onclick="addSubCat('${c.id}')">+ תת-קטגוריה</button></div>
+    </div>`;
+  }).join('');
+  return `<div class="card cats-manager">
+    <div class="who-group-label">🗂️ ניהול קטגוריות</div>
+    ${rows}
+    <div class="pack-add-row" style="margin-top:12px">
+      <input type="text" id="new-cat-icon" maxlength="2" placeholder="🎯" style="max-width:54px;text-align:center;flex:0 0 auto">
+      <input type="text" id="new-cat-label" placeholder="שם קטגוריה חדשה..." onkeydown="if(event.key==='Enter')addCat()">
+      <button class="btn btn-add" onclick="addCat()">+</button>
+    </div>
+    <p class="muted">מחיקת קטגוריה תעביר את הפריטים שבה ל"כללי". הקטגוריות משותפות לרשימה המשותפת ולרשימות האישיות.</p>
+  </div>`;
+}
+async function saveCats(cats){ cache.packCats=cats; await saveKey('pack-categories', cats); }
+async function addCat(){
+  const label=(el('new-cat-label')||{}).value ? el('new-cat-label').value.trim() : ''; if(!label) return;
+  const icon=(el('new-cat-icon')&&el('new-cat-icon').value.trim()) || '📦';
+  const cats = await loadKey('pack-categories', defaultPackCategories());
+  // keep 'general' last
+  const gi = cats.findIndex(c=>c.id==='general');
+  const nc = {id:uid(), icon, label, subs:[]};
+  if(gi>=0) cats.splice(gi,0,nc); else cats.push(nc);
+  await saveCats(cats); logActivity('add','pack-categories',label); renderPackBody();
+}
+async function renameCat(id){
+  const cats = await loadKey('pack-categories', defaultPackCategories());
+  const c = cats.find(x=>x.id===id); if(!c) return;
+  const v = await promptModal('שם הקטגוריה:', {value:c.label, placeholder:'שם הקטגוריה'});
+  if(v===null || !v) return;
+  const ic = await promptModal('אימוג׳י לקטגוריה (אופציונלי):', {value:c.icon, placeholder:'🎯', icon:'🎨', okText:'שמירה'});
+  c.label = v; if(ic!==null && ic) c.icon = ic;
+  await saveCats(cats); logActivity('edit','pack-categories',v); renderPackBody();
+}
+async function delCat(id){
+  if(id==='general') return;
+  if(!(await confirmModal('למחוק את הקטגוריה? הפריטים שבה יועברו ל"כללי".'))) return;
+  let cats = await loadKey('pack-categories', defaultPackCategories());
+  const removed = cats.find(c=>c.id===id);
+  cats = cats.filter(c=>c.id!==id);
+  await saveCats(cats);
+  const shared = await loadKey('packing-shared', []);
+  let ch=false; shared.forEach(it=>{ if(it.cat===id){ it.cat='general'; it.sub=''; ch=true; } });
+  if(ch) await saveKey('packing-shared', shared, true);
+  const all = await loadKey('packing-personal', {});
+  let ch2=false; Object.keys(all).forEach(fam=>(all[fam]||[]).forEach(it=>{ if(it.cat===id){ it.cat='general'; it.sub=''; ch2=true; } }));
+  if(ch2) await saveKey('packing-personal', all, true);
+  if(cache.packCatFilter===id){ cache.packCatFilter='all'; cache.packSubFilter='all'; }
+  logActivity('del','pack-categories',removed?removed.label:''); renderPackBody();
+}
+async function addSubCat(catId){
+  const v = await promptModal('שם תת-קטגוריה:', {value:'', placeholder:'למשל: ציוד'});
+  if(v===null || !v) return;
+  const cats = await loadKey('pack-categories', defaultPackCategories());
+  const c = cats.find(x=>x.id===catId); if(!c) return;
+  if(!c.subs) c.subs=[];
+  c.subs.push({id:uid(), label:v});
+  await saveCats(cats); logActivity('add','pack-categories',`${c.label} · ${v}`); renderPackBody();
+}
+async function delSubCat(catId, subId){
+  if(!(await confirmModal('למחוק את תת-הקטגוריה? הפריטים יישארו בקטגוריה ללא תת-קטגוריה.'))) return;
+  const cats = await loadKey('pack-categories', defaultPackCategories());
+  const c = cats.find(x=>x.id===catId); if(!c) return;
+  c.subs = (c.subs||[]).filter(s=>s.id!==subId);
+  await saveCats(cats);
+  const shared = await loadKey('packing-shared', []);
+  let ch=false; shared.forEach(it=>{ if(it.cat===catId && it.sub===subId){ it.sub=''; ch=true; } });
+  if(ch) await saveKey('packing-shared', shared, true);
+  const all = await loadKey('packing-personal', {});
+  let ch2=false; Object.keys(all).forEach(fam=>(all[fam]||[]).forEach(it=>{ if(it.cat===catId && it.sub===subId){ it.sub=''; ch2=true; } }));
+  if(ch2) await saveKey('packing-personal', all, true);
+  if(cache.packSubFilter===subId) cache.packSubFilter='all';
+  renderPackBody();
+}
 
 /* ---------- TASKS ---------- */
 RENDERERS.tasks = async function(){
