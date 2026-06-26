@@ -11,6 +11,7 @@
     "contacts":                { ".read": true, ".write": true },
     "packing-shared":          { ".read": true, ".write": true },
     "packing-personal":        { ".read": true, ".write": true },
+    "pack-categories":         { ".read": true, ".write": true },
     "tasks":                   { ".read": true, ".write": true },
     "board":                   { ".read": true, ".write": true },
     "map-pins":                { ".read": true, ".write": true },
