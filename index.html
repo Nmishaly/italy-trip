@@ -520,6 +520,7 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
 .doc-card{display:flex; gap:12px; align-items:flex-start;}
 .doc-thumb{width:58px; height:58px; border-radius:12px; object-fit:cover; flex-shrink:0; cursor:pointer; background:var(--surface-2); border:1px solid var(--border-soft);}
 .doc-thumb-icon{display:flex; align-items:center; justify-content:center; font-size:28px;}
+.doc-thumb-lazy{background-size:cover; background-position:center;}
 .doc-info{flex:1; min-width:0;}
 .doc-title{font-weight:700; font-size:14px; color:var(--text); word-break:break-word;}
 .doc-meta{margin-top:4px;}
@@ -955,12 +956,14 @@ async function saveKey(key, value, silent=false){
     }
     setFbStatus(true);
     if(!silent) showToast('נשמר ✓');
+    return true;
   }catch(e){
     setFbStatus(false);
     if(!silent){
       const perm = /permission denied/i.test(e && e.message || '');
       showToast(perm ? '⚠️ לא נשמר בענן — חסר אישור הרשאות ל-Firebase' : '⚠️ לא נשמר בענן — בדקו חיבור');
     }
+    return false;
   }
 }
 
@@ -3460,9 +3463,14 @@ async function renderFolderDocs(folder){
     const owners = (d.owners||[]).map(o=>memberName(folder,o)).filter(Boolean);
     const ownerTags = owners.length ? owners.map(o=>`<span class="owner-tag">${escapeHtml(o)}</span>`).join('') : '<span class="owner-tag" style="opacity:.6">לא משויך</span>';
     const isImg = /^image\//.test(d.mime||'');
-    const thumb = isImg
-      ? `<img class="doc-thumb" src="${d.dataUrl}" alt="${escapeHtml(d.title)}" onclick="viewFolderDoc('${q(d.id)}')">`
-      : `<div class="doc-thumb doc-thumb-icon" onclick="viewFolderDoc('${q(d.id)}')">${cat.ic}</div>`;
+    let thumb;
+    if(isImg && d.dataUrl){            // legacy: image stored inline in the folder key
+      thumb = `<img class="doc-thumb" src="${d.dataUrl}" alt="${escapeHtml(d.title)}" onclick="viewFolderDoc('${q(d.id)}')">`;
+    } else if(isImg){                  // new: image blob lives in its own key, loaded lazily
+      thumb = `<div class="doc-thumb doc-thumb-icon doc-thumb-lazy" data-doc-id="${escapeHtml(d.id)}" onclick="viewFolderDoc('${q(d.id)}')">${cat.ic}</div>`;
+    } else {
+      thumb = `<div class="doc-thumb doc-thumb-icon" onclick="viewFolderDoc('${q(d.id)}')">${cat.ic}</div>`;
+    }
     return `<div class="card doc-card">
       ${thumb}
       <div class="doc-info">
@@ -3478,6 +3486,15 @@ async function renderFolderDocs(folder){
       </div>
     </div>`;
   }).join('');
+  // Fill in thumbnails for images whose blob lives in its own key.
+  wrap.querySelectorAll('.doc-thumb-lazy').forEach(elm=>{
+    getDocData({ id: elm.getAttribute('data-doc-id') }).then(data=>{
+      if(!data) return;
+      elm.style.backgroundImage = `url("${data}")`;
+      elm.classList.remove('doc-thumb-icon');   // drop icon centring/font
+      elm.textContent = '';                      // clear the placeholder glyph
+    });
+  });
 }
 function fmtSize(bytes){ // bytes here is base64 length ≈ 0.75 actual; rough display only
   const b = Math.round(bytes*0.75);
@@ -3578,11 +3595,31 @@ async function uploadFolderDoc(){
   btn.disabled = true; btn.textContent = '⏳ מעלה...';
   try{
     const out = await readDocFile(file);
+    const id = uid();
+    // 1) Store the heavy file (base64) under its OWN Firebase key, so the shared
+    //    flight-folder key stays small no matter how many documents pile up. If
+    //    this write fails, nothing else has been touched yet — bail cleanly.
+    const blobOk = await saveDocBlob(id, out.dataUrl);
+    if(!blobOk){
+      btn.disabled = false; btn.textContent = '⬆️ העלאה לתיקייה';
+      alertModal('המסמך לא נשמר בענן — ייתכן שהקובץ גדול מדי או שאין חיבור. נסו להעלות תמונה דחוסה יותר או PDF קטן יותר ולנסות שוב.', '⚠️');
+      return;
+    }
+    cache._docBlobs = cache._docBlobs || {}; cache._docBlobs[id] = out.dataUrl; // warm cache so the thumb shows instantly
+    // 2) Add the small metadata record (no dataUrl) to the shared folder key.
     const all = await loadKey('flight-folder', {});
     const folder = ensureFolder(all, fam);
-    const doc = { id:uid(), title, category, owners, fileName:out.fileName, mime:out.mime, dataUrl:out.dataUrl, size:out.size, uploadedBy:fam, ts:Date.now() };
+    const doc = { id, title, category, owners, fileName:out.fileName, mime:out.mime, size:out.size, uploadedBy:fam, ts:Date.now() };
     folder.docs.push(doc);
-    await saveKey('flight-folder', all);
+    const ok = await saveKey('flight-folder', all, true);
+    if(!ok){
+      folder.docs.pop();              // roll back the in-memory doc...
+      _lsSet('flight-folder', all);   // ...and the local cache, so it won't linger then disappear on sync
+      deleteDocBlob(id);              // ...and drop the just-saved blob so it doesn't orphan
+      btn.disabled = false; btn.textContent = '⬆️ העלאה לתיקייה';
+      alertModal('המסמך לא נשמר בענן — ייתכן שיש בעיית חיבור. נסו שוב בעוד רגע.', '⚠️');
+      return;
+    }
     logActivity('add','flight-folder',`${docCat(category).label}: ${title}`,fam,{kind:'folder-doc-add', fam, id:doc.id});
     RENDERERS['flight-folder']();
   }catch(e){
@@ -3591,6 +3628,53 @@ async function uploadFolderDoc(){
   }
 }
 function getFolderDoc(fam, all, id){ const f = all[fam]; return f && (f.docs||[]).find(d=>d.id===id); }
+
+/* ------------------------------------------------------------
+   PER-DOCUMENT BLOB STORAGE — each uploaded file's heavy base64 data
+   URL lives under its own Firebase key (fdoc-<id>), so the shared
+   flight-folder key stays small however many documents accumulate. The
+   blobs are NOT mirrored to localStorage (they'd blow the quota); they're
+   fetched on demand and kept in an in-memory cache for the session.
+   Legacy documents that still carry an inline `dataUrl` keep working
+   untouched — getDocData() returns the inline copy when present.
+------------------------------------------------------------ */
+// Each blob lives at folder-docs/<id> — one parent node (whitelisted in
+// database.rules.json) whose children inherit read/write, so we never need a
+// rule per file. We only ever read/write individual children, never the parent.
+function docBlobUrl(id){ return `${FIREBASE_URL}/folder-docs/${encodeURIComponent(id)}.json`; }
+async function saveDocBlob(id, dataUrl){
+  try{
+    const res = await fetch(docBlobUrl(id), {
+      method:'PUT', headers:{'Content-Type':'application/json', ...(await appCheckHeaders())},
+      body: JSON.stringify(dataUrl)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    setFbStatus(true); return true;
+  }catch(e){ setFbStatus(false); return false; }
+}
+async function deleteDocBlob(id){
+  try{ await fetch(docBlobUrl(id), { method:'DELETE', headers: await appCheckHeaders() }); }catch(e){}
+}
+async function fetchDocBlob(id){
+  try{
+    const res = await fetch(docBlobUrl(id), { headers: await appCheckHeaders() });
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    return data || null;
+  }catch(e){ return null; }
+}
+// Resolve a document's data URL: inline (legacy) → memory cache → fetch from fdoc-<id>.
+async function getDocData(doc){
+  if(!doc) return null;
+  if(doc.dataUrl) return doc.dataUrl;            // legacy inline blob
+  if(!doc.id) return null;
+  cache._docBlobs = cache._docBlobs || {};
+  if(cache._docBlobs[doc.id] !== undefined) return cache._docBlobs[doc.id];
+  const data = await fetchDocBlob(doc.id);
+  cache._docBlobs[doc.id] = data;
+  return data;
+}
+
 async function viewFolderDoc(id){
   const all = await loadKey('flight-folder', {}, {swr:true});
   const folder = all[cache.currentFolderFam]; if(!folder) return;
@@ -3600,7 +3684,7 @@ async function viewFolderDoc(id){
   const items = order.map(did=>{
     const d = byId[did]; const cat = docCat(d.category);
     const owners = (d.owners||[]).map(o=>memberName(folder,o)).filter(Boolean).join(', ');
-    return { id:d.id, title:d.title, dataUrl:d.dataUrl, mime:d.mime, fileName:d.fileName, catLabel:`${cat.ic} ${cat.label}`, owners };
+    return { id:d.id, title:d.title, dataUrl:d.dataUrl, mime:d.mime, fileName:d.fileName, catLabel:`${cat.ic} ${cat.label}`, owners, load:()=>getDocData(d) };
   });
   const start = Math.max(0, order.indexOf(id));
   openDocLightbox(items, start);
@@ -3650,13 +3734,24 @@ function openDocLightbox(items, startIdx){
   const qsel = s=>ov.querySelector(s);
   const stage = qsel('#lb-stage');
   let renderTok = 0;
-  function render(){
+  async function render(){
     const it = items[idx];
     const isImg = /^image\//.test(it.mime||'');
     const isPdf = /pdf/.test(it.mime||'') || /\.pdf$/i.test(it.fileName||'');
     const myTok = ++renderTok;
     stage.classList.remove('zoomed');
     stage.classList.toggle('lb-pdf-stage', isPdf);
+    if(!it.dataUrl && it.load){                    // blob stored in its own key — fetch on demand
+      stage.innerHTML = `<div class="lb-pdf-loading">טוען…</div>`;
+      it.dataUrl = await it.load();
+      if(myTok !== renderTok) return;              // user navigated away while loading
+      if(!it.dataUrl){
+        stage.innerHTML = `<div class="lb-fallback"><div class="lb-fallback-ic">⚠️</div><div>הקובץ אינו זמין כרגע — בדקו חיבור ונסו שוב.</div></div>`;
+        qsel('#lb-title').textContent = it.title || 'מסמך';
+        qsel('#lb-count').textContent = multi ? `${idx+1} / ${items.length}` : '';
+        return;
+      }
+    }
     if(isImg){
       stage.innerHTML = `<img class="lb-img" src="${it.dataUrl}" alt="${escapeHtml(it.title||'')}">`;
       const img = stage.querySelector('img'); if(img) img.onclick = toggleZoom;
@@ -3675,7 +3770,7 @@ function openDocLightbox(items, startIdx){
     qsel('#lb-zoom').style.display = isImg ? '' : 'none';
   }
   function go(n){ if(!multi) return; idx = (idx + n + items.length) % items.length; render(); }
-  function download(){ const it=items[idx]; const a=document.createElement('a'); a.href=it.dataUrl; a.download=it.fileName||it.title||'document'; a.click(); }
+  async function download(){ const it=items[idx]; const data = it.dataUrl || (it.load && await it.load()); if(!data) return; const a=document.createElement('a'); a.href=data; a.download=it.fileName||it.title||'document'; a.click(); }
   function toggleZoom(){ stage.classList.toggle('zoomed'); }
 
   qsel('#lb-prev').style.display = multi ? '' : 'none';
@@ -3697,7 +3792,9 @@ function openDocLightbox(items, startIdx){
 async function downloadFolderDoc(id){
   const all = await loadKey('flight-folder', {});
   const d = getFolderDoc(cache.currentFolderFam, all, id); if(!d) return;
-  const a = document.createElement('a'); a.href = d.dataUrl; a.download = d.fileName || (d.title+'') || 'document'; a.click();
+  const data = await getDocData(d);
+  if(!data){ alertModal('הקובץ אינו זמין כרגע — בדקו חיבור ונסו שוב.', '⚠️'); return; }
+  const a = document.createElement('a'); a.href = data; a.download = d.fileName || (d.title+'') || 'document'; a.click();
 }
 async function delFolderDoc(id){
   if(!(await confirmModal('למחוק את המסמך?', {okText:'מחיקה', icon:'🗑️'}))) return;
@@ -3708,6 +3805,9 @@ async function delFolderDoc(id){
   const removed = folder.docs[idx];
   folder.docs = folder.docs.filter(d=>d.id!==id);
   await saveKey('flight-folder', all);
+  // The blob (fdoc-<id>) is intentionally left in place so Undo can restore the
+  // document by re-inserting just its metadata; the orphan is tiny relative to
+  // the bug it avoids, and it lives in its own key so it never bloats this one.
   logActivity('del','flight-folder',removed?`${docCat(removed.category).label}: ${removed.title}`:'',fam, removed?{kind:'folder-doc-del', fam, doc:removed, index:idx}:undefined);
   RENDERERS['flight-folder']();
 }
