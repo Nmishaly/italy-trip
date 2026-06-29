@@ -955,12 +955,14 @@ async function saveKey(key, value, silent=false){
     }
     setFbStatus(true);
     if(!silent) showToast('נשמר ✓');
+    return true;
   }catch(e){
     setFbStatus(false);
     if(!silent){
       const perm = /permission denied/i.test(e && e.message || '');
       showToast(perm ? '⚠️ לא נשמר בענן — חסר אישור הרשאות ל-Firebase' : '⚠️ לא נשמר בענן — בדקו חיבור');
     }
+    return false;
   }
 }
 
@@ -3582,7 +3584,19 @@ async function uploadFolderDoc(){
     const folder = ensureFolder(all, fam);
     const doc = { id:uid(), title, category, owners, fileName:out.fileName, mime:out.mime, dataUrl:out.dataUrl, size:out.size, uploadedBy:fam, ts:Date.now() };
     folder.docs.push(doc);
-    await saveKey('flight-folder', all);
+    // Save silently and check the result: the whole folder (all docs, base64 and
+    // all) is one Firebase key, so a large/new file can push the write over the
+    // size limit and fail. If we logged the activity anyway, the activity entry
+    // would persist (separate small key) while the doc never reached the cloud —
+    // and the next sync would wipe the local copy, making the doc "vanish".
+    const ok = await saveKey('flight-folder', all, true);
+    if(!ok){
+      folder.docs.pop();              // roll back the in-memory doc...
+      _lsSet('flight-folder', all);   // ...and the local cache, so it won't linger then disappear on sync
+      btn.disabled = false; btn.textContent = '⬆️ העלאה לתיקייה';
+      alertModal('המסמך לא נשמר בענן — ייתכן שהתיקייה מלאה מדי (יותר מדי מסמכים או קבצים גדולים). נסו למחוק מסמכים ישנים, להעלות תמונה דחוסה יותר, או להמיר את הקובץ ל-PDF קטן יותר ולנסות שוב.', '⚠️');
+      return;
+    }
     logActivity('add','flight-folder',`${docCat(category).label}: ${title}`,fam,{kind:'folder-doc-add', fam, id:doc.id});
     RENDERERS['flight-folder']();
   }catch(e){
