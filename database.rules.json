@@ -22,6 +22,7 @@
     "activity-log":            { ".read": true, ".write": true },
     "undo-store":              { ".read": true, ".write": true },
     "flight-folder":           { ".read": true, ".write": true },
+    "folder-docs":             { ".read": true, ".write": true },
     "photo-album":             { ".read": true, ".write": true }
   }
 }
