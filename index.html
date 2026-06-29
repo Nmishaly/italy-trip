@@ -3426,6 +3426,7 @@ RENDERERS['flight-folder'] = async function(){
     else { if(t) t.textContent = 'גררו לכאן קובץ או לחצו לבחירה'; if(z) z.classList.remove('has-file'); }
   });
   renderFolderDocs(folder);
+  maybeMigrateFolderBlobs(); // background: slim down the shared key for existing docs
 };
 function folderFilterChips(folder){
   const cur = cache.folderMemberFilter || 'all-view';
@@ -3673,6 +3674,45 @@ async function getDocData(doc){
   const data = await fetchDocBlob(doc.id);
   cache._docBlobs[doc.id] = data;
   return data;
+}
+
+// Move any legacy inline data URLs out of the shared flight-folder key and into
+// their own folder-docs/<id> keys. This is what actually shrinks the bloated
+// shared key for EXISTING documents — the split alone only helps new uploads,
+// because old docs kept their multi-MB base64 inline, leaving the key too big
+// to cache in localStorage (so new docs never appeared) and slow/risky to write.
+// Each blob is written first; only on success is the inline copy stripped, so a
+// failed write loses nothing (it stays inline and is retried next session).
+async function migrateFolderBlobs(all){
+  cache._docBlobs = cache._docBlobs || {};
+  let changed = false, remaining = 0;
+  for(const fam of Object.keys(all||{})){
+    const f = all[fam];
+    if(!f || !Array.isArray(f.docs)) continue;
+    for(const d of f.docs){
+      if(!d || !d.dataUrl) continue;
+      const ok = await saveDocBlob(d.id, d.dataUrl);
+      if(!ok){ remaining++; continue; }      // leave inline; retry another time
+      cache._docBlobs[d.id] = d.dataUrl;      // warm cache so the thumb stays instant
+      delete d.dataUrl;                       // strip the heavy copy from the shared key
+      changed = true;
+    }
+  }
+  if(changed) await saveKey('flight-folder', all, true);
+  return { changed, remaining };
+}
+// Run the migration once per session, network-first so we operate on the true
+// full state (the local cache may be stale/incomplete when over quota).
+async function maybeMigrateFolderBlobs(){
+  if(cache._folderMigrating || cache._folderMigrated) return;
+  cache._folderMigrating = true;
+  try{
+    const all = await loadKey('flight-folder', {});
+    const { changed, remaining } = await migrateFolderBlobs(all);
+    if(remaining === 0) cache._folderMigrated = true; // all clear — don't run again this session
+    if(changed){ cache._folderAll = all; if(currentTab === 'flight-folder') RENDERERS['flight-folder'](); }
+  }catch(e){ /* leave it for next session */ }
+  finally{ cache._folderMigrating = false; }
 }
 
 async function viewFolderDoc(id){
