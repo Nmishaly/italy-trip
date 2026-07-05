@@ -1460,6 +1460,13 @@ async function exportData(){
   const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','pack-categories','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list','map-pins','activity-log','flight-folder','photo-album'];
   const out = {};
   for(const k of keys){ const v = await loadKey(k, null); if(v !== null) out[k] = v; }
+  // Document images (passports, tickets, licenses) live under folder-docs/<id>, not
+  // inside flight-folder. Fetch them directly so a backup actually contains them —
+  // fetched (not loadKey'd) to avoid caching multi-MB blobs into localStorage.
+  try{
+    const res = await fetch(`${FIREBASE_URL}/folder-docs.json`, { headers: await appCheckHeaders() });
+    if(res.ok){ const fd = await res.json(); if(fd) out['folder-docs'] = fd; }
+  }catch(e){ /* offline — export what we have */ }
   const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download='italy-trip-backup.json'; a.click();
@@ -1704,13 +1711,15 @@ async function addPlace(){
   const name = el('place-name').value.trim();
   const note = el('place-note').value.trim();
   if(!name) return;
-  const places = await loadKey('places', []);
   const editing = !!cache.editPlaceId;
+  return withKeyLock('places', async ()=>{
+  const places = await loadKey('places', []);
   if(editing){ const p=places.find(x=>x.id===cache.editPlaceId); if(p){p.name=name;p.note=note;} cache.editPlaceId=null; }
   else places.push({id:uid(), name, note});
   await saveKey('places', places);
   logActivity(editing?'edit':'add', 'places', name);
   RENDERERS.places();
+  });
 }
 async function editPlace(id){
   const places = await loadKey('places', []);
@@ -1721,12 +1730,14 @@ async function editPlace(id){
 }
 async function delPlace(id){
   if(!(await confirmModal('למחוק את המקום?'))) return;
+  return withKeyLock('places', async ()=>{
   let places = await loadKey('places', []);
   const removed = places.find(p=>p.id===id);
   places = places.filter(p=>p.id!==id);
   await saveKey('places', places);
   logActivity('del', 'places', removed?removed.name:'');
   RENDERERS.places();
+  });
 }
 function mapSearch(name){ window.open(`https://www.google.com/maps/search/${encodeURIComponent(name+' Italy')}`,'_blank','noopener'); }
 
@@ -1973,13 +1984,15 @@ function renderKosherList(spots){
 async function addSyn(){
   const name = el('syn-name').value.trim(), address = el('syn-addr').value.trim(), phone = el('syn-phone').value.trim();
   if(!name) return;
-  const syns = await loadKey('synagogues', []);
   const editing = !!cache.editSynId;
+  return withKeyLock('synagogues', async ()=>{
+  const syns = await loadKey('synagogues', []);
   if(editing){ const s=syns.find(x=>x.id===cache.editSynId); if(s){s.name=name;s.address=address;s.phone=phone;} cache.editSynId=null; }
   else syns.push({id:uid(), name, address, phone});
   await saveKey('synagogues', syns);
   logActivity(editing?'edit':'add', 'synagogues', name);
   RENDERERS.kosher();
+  });
 }
 async function editSyn(id){
   const syns = await loadKey('synagogues', []); const s = syns.find(x=>x.id===id); if(!s) return;
@@ -1989,19 +2002,23 @@ async function editSyn(id){
 }
 async function delSyn(id){
   if(!(await confirmModal('למחוק את בית הכנסת?'))) return;
+  return withKeyLock('synagogues', async ()=>{
   let syns = await loadKey('synagogues', []); const removed=syns.find(s=>s.id===id); syns = syns.filter(s=>s.id!==id);
   await saveKey('synagogues', syns); logActivity('del','synagogues',removed?removed.name:''); RENDERERS.kosher();
+  });
 }
 async function addKosherSpot(){
   const city = el('ks-city').value.trim() || 'כללי', name = el('ks-name').value.trim(), note = el('ks-note').value.trim();
   if(!name) return;
-  const spots = await loadKey('kosher-spots', []);
   const editing = !!cache.editKsId;
+  return withKeyLock('kosher-spots', async ()=>{
+  const spots = await loadKey('kosher-spots', []);
   if(editing){ const s=spots.find(x=>x.id===cache.editKsId); if(s){s.city=city;s.name=name;s.note=note;} cache.editKsId=null; }
   else spots.push({id:uid(), city, name, note});
   await saveKey('kosher-spots', spots);
   logActivity(editing?'edit':'add', 'kosher-spots', name + (city?` · ${city}`:''));
   RENDERERS.kosher();
+  });
 }
 async function editKosherSpot(id){
   const spots = await loadKey('kosher-spots', []); const s = spots.find(x=>x.id===id); if(!s) return;
@@ -2011,8 +2028,10 @@ async function editKosherSpot(id){
 }
 async function delKosherSpot(id){
   if(!(await confirmModal('למחוק את המקום?'))) return;
+  return withKeyLock('kosher-spots', async ()=>{
   let spots = await loadKey('kosher-spots', []); const removed=spots.find(s=>s.id===id); spots = spots.filter(s=>s.id!==id);
   await saveKey('kosher-spots', spots); logActivity('del','kosher-spots',removed?removed.name:''); RENDERERS.kosher();
+  });
 }
 function searchKosherNear(){
   const addr = el('addr-search').value.trim(); if(!addr) return;
@@ -2186,8 +2205,9 @@ async function addCustomAttraction(){
   const name = el('attr-name').value.trim(); if(!name) return;
   const data = { name, dist:el('attr-dist').value.trim(), duration:el('attr-duration').value.trim(),
     desc:el('attr-desc').value.trim(), ages:el('attr-ages').value.trim(), price:el('attr-price').value.trim() };
-  const list = await loadKey('villa-attractions-custom', []);
   const editing = !!cache.editAttrId;
+  return withKeyLock('villa-attractions-custom', async ()=>{
+  const list = await loadKey('villa-attractions-custom', []);
   if(editing){ const a=list.find(x=>x.id===cache.editAttrId); if(a) Object.assign(a,data); cache.editAttrId=null; }
   else list.push({id:uid(), ...data});
   await saveKey('villa-attractions-custom', list);
@@ -2195,6 +2215,7 @@ async function addCustomAttraction(){
   ATTR_FIELDS.forEach(id => el(id).value = '');
   el('attr-btn').textContent='הוספה לרשימה';
   renderCustomAttractions(list);
+  });
 }
 async function editCustomAttraction(id){
   const list = await loadKey('villa-attractions-custom', []); const a = list.find(x=>x.id===id); if(!a) return;
@@ -2206,10 +2227,12 @@ async function editCustomAttraction(id){
 }
 async function delCustomAttraction(id){
   if(!(await confirmModal('למחוק את האטרקציה?'))) return;
+  return withKeyLock('villa-attractions-custom', async ()=>{
   let list = await loadKey('villa-attractions-custom', []); const removed=list.find(a=>a.id===id); list = list.filter(a => a.id !== id);
   await saveKey('villa-attractions-custom', list);
   logActivity('del','villa-attractions-custom',removed?removed.name:'');
   renderCustomAttractions(list);
+  });
 }
 
 /* ---------- PACKING ---------- */
@@ -2447,13 +2470,13 @@ async function savePackEdit(scope,id){
   else { const fam=cache.currentPerson; const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); const it=list.find(x=>x.id===id); if(it)it.text=val; all[fam]=list; await saveKey('packing-personal',all); logActivity('edit','packing-personal',val,fam); }
   cache.editPack=null; renderPackBody();
 }
-async function toggleSharedDone(id,checked){ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(it)it.done=checked; await saveKey('packing-shared',list); if(it)logActivity('edit','packing-shared',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`); renderPackBody(); }
-async function togglePackingAssignment(id,family,checked){ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(!it)return; if(!it.assignedTo)it.assignedTo=[]; if(checked){ if(!it.assignedTo.includes(family))it.assignedTo.push(family); } else { it.assignedTo=it.assignedTo.filter(f=>f!==family); } await saveKey('packing-shared',list); renderPackBody(); }
-async function delShared(id){ if(!(await confirmModal('למחוק את הפריט?')))return; let list=await loadKey('packing-shared',[]); const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); await saveKey('packing-shared',list); logActivity('del','packing-shared',removed?removed.text:''); renderPackBody(); }
-async function addShared(){ const i=el('shared-new'); const v=i.value.trim(); if(!v)return; const cat=(el('shared-add-cat')||{}).value||'general'; const sub=(el('shared-add-sub')||{}).value||''; const list=await loadKey('packing-shared',[]); list.push({id:uid(),text:v,done:false,assignedTo:[],cat,sub}); await saveKey('packing-shared',list); logActivity('add','packing-shared',v); renderPackBody(); }
-async function togglePersonalDone(fam,id,checked){ const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('packing-personal',all); if(it)logActivity('edit','packing-personal',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPackBody(); }
-async function delPersonalItem(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; const all=await loadKey('packing-personal',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('packing-personal',all); logActivity('del','packing-personal',removed?removed.text:'',fam); renderPackBody(); }
-async function addPersonal(){ const i=el('personal-new'); const v=i.value.trim(); if(!v)return; const cat=(el('personal-add-cat')||{}).value||'general'; const sub=(el('personal-add-sub')||{}).value||''; const fam=cache.currentPerson; const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); list.push({id:uid(),text:v,done:false,cat,sub}); all[fam]=list; await saveKey('packing-personal',all); logActivity('add','packing-personal',v,fam); renderPackBody(); }
+async function toggleSharedDone(id,checked){ return withKeyLock('packing-shared', async ()=>{ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(it)it.done=checked; await saveKey('packing-shared',list); if(it)logActivity('edit','packing-shared',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`); renderPackBody(); }); }
+async function togglePackingAssignment(id,family,checked){ return withKeyLock('packing-shared', async ()=>{ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(!it)return; if(!it.assignedTo)it.assignedTo=[]; if(checked){ if(!it.assignedTo.includes(family))it.assignedTo.push(family); } else { it.assignedTo=it.assignedTo.filter(f=>f!==family); } await saveKey('packing-shared',list); renderPackBody(); }); }
+async function delShared(id){ if(!(await confirmModal('למחוק את הפריט?')))return; return withKeyLock('packing-shared', async ()=>{ let list=await loadKey('packing-shared',[]); const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); await saveKey('packing-shared',list); logActivity('del','packing-shared',removed?removed.text:''); renderPackBody(); }); }
+async function addShared(){ const i=el('shared-new'); const v=i.value.trim(); if(!v)return; const cat=(el('shared-add-cat')||{}).value||'general'; const sub=(el('shared-add-sub')||{}).value||''; return withKeyLock('packing-shared', async ()=>{ const list=await loadKey('packing-shared',[]); list.push({id:uid(),text:v,done:false,assignedTo:[],cat,sub}); await saveKey('packing-shared',list); logActivity('add','packing-shared',v); renderPackBody(); }); }
+async function togglePersonalDone(fam,id,checked){ return withKeyLock('packing-personal', async ()=>{ const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('packing-personal',all); if(it)logActivity('edit','packing-personal',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPackBody(); }); }
+async function delPersonalItem(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; return withKeyLock('packing-personal', async ()=>{ const all=await loadKey('packing-personal',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('packing-personal',all); logActivity('del','packing-personal',removed?removed.text:'',fam); renderPackBody(); }); }
+async function addPersonal(){ const i=el('personal-new'); const v=i.value.trim(); if(!v)return; const cat=(el('personal-add-cat')||{}).value||'general'; const sub=(el('personal-add-sub')||{}).value||''; const fam=cache.currentPerson; return withKeyLock('packing-personal', async ()=>{ const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); list.push({id:uid(),text:v,done:false,cat,sub}); all[fam]=list; await saveKey('packing-personal',all); logActivity('add','packing-personal',v,fam); renderPackBody(); }); }
 
 /* ---- change an item's category / sub-category (preserving any unsaved edited text) ---- */
 function pendingEditText(){ const i=el('pack-edit-input'); return i ? i.value.trim() : undefined; }
@@ -2474,18 +2497,22 @@ async function setItemSub(scope, id, sub){
 }
 async function updatePackItem(scope, id, fields){
   if(scope==='shared'){
-    const list = await loadKey('packing-shared', []);
-    const it = list.find(x=>x.id===id); if(!it) return;
-    Object.assign(it, fields);
-    await saveKey('packing-shared', list);
+    return withKeyLock('packing-shared', async ()=>{
+      const list = await loadKey('packing-shared', []);
+      const it = list.find(x=>x.id===id); if(!it) return;
+      Object.assign(it, fields);
+      await saveKey('packing-shared', list);
+    });
   } else {
     const fam = cache.currentPerson;
-    const all = await loadKey('packing-personal', {});
-    const list = all[fam] || defaultPersonalPacking();
-    const it = list.find(x=>x.id===id); if(!it) return;
-    Object.assign(it, fields);
-    all[fam] = list;
-    await saveKey('packing-personal', all);
+    return withKeyLock('packing-personal', async ()=>{
+      const all = await loadKey('packing-personal', {});
+      const list = all[fam] || defaultPersonalPacking();
+      const it = list.find(x=>x.id===id); if(!it) return;
+      Object.assign(it, fields);
+      all[fam] = list;
+      await saveKey('packing-personal', all);
+    });
   }
 }
 
@@ -2614,19 +2641,21 @@ function renderTasksList(tasks){
 async function addTask(){
   const text = el('task-text').value.trim(); if(!text) return;
   const owner = el('task-owner').value;
+  return withKeyLock('tasks', async ()=>{
   const tasks = await loadKey('tasks', []);
   const editing = !!cache.editTaskId;
   if(editing){ const t=tasks.find(x=>x.id===cache.editTaskId); if(t){t.text=text;t.owner=owner;} cache.editTaskId=null; }
   else tasks.push({id:uid(), text, owner, done:false});
   await saveKey('tasks', tasks); logActivity(editing?'edit':'add','tasks',text,owner); RENDERERS.tasks();
+  });
 }
 async function editTask(id){
   const tasks = await loadKey('tasks', []); const t=tasks.find(x=>x.id===id); if(!t)return;
   cache.editTaskId=id; el('task-text').value=t.text; el('task-owner').value=t.owner||'';
   el('task-btn').textContent='עדכון ✓'; el('task-text').focus();
 }
-async function toggleTask(id,checked){ const tasks=await loadKey('tasks',[]); const t=tasks.find(x=>x.id===id); if(t)t.done=checked; await saveKey('tasks',tasks); if(t)logActivity('edit','tasks',`${checked?'✓ הושלמה':'✗ בוטלה'}: ${t.text}`); renderTasksList(tasks); }
-async function delTask(id){ if(!(await confirmModal('למחוק את המטלה?')))return; let tasks=await loadKey('tasks',[]); const removed=tasks.find(t=>t.id===id); tasks=tasks.filter(t=>t.id!==id); await saveKey('tasks',tasks); logActivity('del','tasks',removed?removed.text:''); RENDERERS.tasks(); }
+async function toggleTask(id,checked){ return withKeyLock('tasks', async ()=>{ const tasks=await loadKey('tasks',[]); const t=tasks.find(x=>x.id===id); if(t)t.done=checked; await saveKey('tasks',tasks); if(t)logActivity('edit','tasks',`${checked?'✓ הושלמה':'✗ בוטלה'}: ${t.text}`); renderTasksList(tasks); }); }
+async function delTask(id){ if(!(await confirmModal('למחוק את המטלה?')))return; return withKeyLock('tasks', async ()=>{ let tasks=await loadKey('tasks',[]); const removed=tasks.find(t=>t.id===id); tasks=tasks.filter(t=>t.id!==id); await saveKey('tasks',tasks); logActivity('del','tasks',removed?removed.text:''); RENDERERS.tasks(); }); }
 
 /* ---------- PRE-FLIGHT CHECKLIST (per family) ---------- */
 function defaultPreflightItems(){
@@ -2657,12 +2686,12 @@ function renderPFBody(all){
   if(cache.editPF){ const i=el('pf-edit-input'); if(i){ i.focus(); i.select(); } }
 }
 async function selectPF(name){ cache.currentPFFamily=name; cache.editPF=null; const all=await loadKey('preflight',{}); renderPFBody(all); }
-async function togglePF(fam,id,checked){ const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('preflight',all); if(it)logActivity('edit','preflight',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPFBody(all); }
-async function addPF(){ const v=el('pf-new').value.trim(); if(!v)return; const fam=cache.currentPFFamily; const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); list.push({id:uid(),text:v,done:false}); all[fam]=list; await saveKey('preflight',all); logActivity('add','preflight',v,fam); renderPFBody(all); }
-async function delPF(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; const all=await loadKey('preflight',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('preflight',all); logActivity('del','preflight',removed?removed.text:'',fam); renderPFBody(all); }
+async function togglePF(fam,id,checked){ return withKeyLock('preflight', async ()=>{ const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('preflight',all); if(it)logActivity('edit','preflight',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPFBody(all); }); }
+async function addPF(){ const v=el('pf-new').value.trim(); if(!v)return; const fam=cache.currentPFFamily; return withKeyLock('preflight', async ()=>{ const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); list.push({id:uid(),text:v,done:false}); all[fam]=list; await saveKey('preflight',all); logActivity('add','preflight',v,fam); renderPFBody(all); }); }
+async function delPF(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; return withKeyLock('preflight', async ()=>{ const all=await loadKey('preflight',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('preflight',all); logActivity('del','preflight',removed?removed.text:'',fam); renderPFBody(all); }); }
 async function editPF(fam,id){ cache.editPF={fam,id}; const all=await loadKey('preflight',{}); renderPFBody(all); }
 async function cancelPFEdit(){ cache.editPF=null; const all=await loadKey('preflight',{}); renderPFBody(all); }
-async function savePFEdit(fam,id){ const inp=el('pf-edit-input'); if(!inp)return; const val=inp.value.trim(); if(!val){cancelPFEdit();return;} const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); const it=list.find(x=>x.id===id); if(it)it.text=val; all[fam]=list; await saveKey('preflight',all); logActivity('edit','preflight',val,fam); cache.editPF=null; renderPFBody(all); }
+async function savePFEdit(fam,id){ const inp=el('pf-edit-input'); if(!inp)return; const val=inp.value.trim(); if(!val){cancelPFEdit();return;} return withKeyLock('preflight', async ()=>{ const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); const it=list.find(x=>x.id===id); if(it)it.text=val; all[fam]=list; await saveKey('preflight',all); logActivity('edit','preflight',val,fam); cache.editPF=null; renderPFBody(all); }); }
 
 /* ---------- CONTACTS ---------- */
 function defaultContacts(){
@@ -2703,11 +2732,13 @@ function renderContactsList(contacts){
 async function addContact(){
   const name=el('c-name').value.trim(), phone=el('c-phone').value.trim(), note=el('c-note').value.trim();
   if(!name) return;
-  const contacts = await loadKey('contacts', []);
   const editing = !!cache.editContactId;
+  return withKeyLock('contacts', async ()=>{
+  const contacts = await loadKey('contacts', []);
   if(editing){ const c=contacts.find(x=>x.id===cache.editContactId); if(c){c.name=name;c.phone=phone;c.note=note;} cache.editContactId=null; }
   else contacts.push({id:uid(), name, phone, note});
   await saveKey('contacts', contacts); logActivity(editing?'edit':'add','contacts',name); RENDERERS.contacts();
+  });
 }
 async function editContact(id){
   const contacts = await loadKey('contacts', []); const c=contacts.find(x=>x.id===id); if(!c)return;
@@ -2716,8 +2747,10 @@ async function editContact(id){
 }
 async function delContact(id){
   if(!(await confirmModal('למחוק את איש הקשר?')))return;
+  return withKeyLock('contacts', async ()=>{
   let contacts = await loadKey('contacts', []); const removed=contacts.find(c=>c.id===id); contacts = contacts.filter(c=>c.id!==id);
   await saveKey('contacts', contacts); logActivity('del','contacts',removed?removed.name:''); RENDERERS.contacts();
+  });
 }
 
 /* ---------- BOARD ---------- */
@@ -2776,12 +2809,14 @@ async function addBoard(){
   const author = el('b-author').value || 'המשפחה';
   const text = el('b-text').value.trim();
   if(!text) return;
+  const editing = !!cache.editBoardId;
+  return withKeyLock('board', async ()=>{
   const board = await loadKey('board', []);
   const time = new Date().toLocaleString('he-IL',{dateStyle:'short',timeStyle:'short'});
-  const editing = !!cache.editBoardId;
   if(editing){ const n=board.find(x=>x.id===cache.editBoardId); if(n){n.author=author;n.text=text;} cache.editBoardId=null; }
   else board.push({id:uid(), author, text, time, ts:Date.now()});
   await saveKey('board', board); logActivity(editing?'edit':'add','board',text,author); RENDERERS.board();
+  });
 }
 async function editBoard(id){
   const board = await loadKey('board', []); const n=board.find(x=>x.id===id); if(!n)return;
@@ -2790,10 +2825,12 @@ async function editBoard(id){
 }
 async function delBoard(id){
   if(!(await confirmModal('למחוק את ההודעה?')))return;
+  return withKeyLock('board', async ()=>{
   let board = await loadKey('board', []); const removed=board.find(n=>n.id===id); board = board.filter(n=>n.id!==id);
   await saveKey('board', board);
   logActivity('del','board',removed?removed.text:'',removed?removed.author:'');
   if(currentTab==='board') RENDERERS.board(); else RENDERERS.home();
+  });
 }
 function toggleCommentForm(noteId){
   const form = el('cf-' + noteId);
@@ -2808,6 +2845,7 @@ async function addComment(noteId){
   const author = authorEl.value, text = textEl.value.trim();
   if(!author){ alertModal('נא לבחור שם', '👤'); return; }
   if(!text) return;
+  return withKeyLock('board', async ()=>{
   const board = await loadKey('board', []);
   const note = board.find(n=>n.id===noteId);
   if(!note) return;
@@ -2816,9 +2854,11 @@ async function addComment(noteId){
   await saveKey('board', board);
   logActivity('add','board',`תגובה: ${text}`,author);
   rerenderBoardSurface();
+  });
 }
 async function delComment(noteId, commentId){
   if(!(await confirmModal('למחוק את התגובה?'))) return;
+  return withKeyLock('board', async ()=>{
   const board = await loadKey('board', []);
   const note = board.find(n=>n.id===noteId);
   let removed=null;
@@ -2826,6 +2866,7 @@ async function delComment(noteId, commentId){
   await saveKey('board', board);
   logActivity('del','board',removed?`תגובה: ${removed.text}`:'תגובה',removed?removed.author:'');
   rerenderBoardSurface();
+  });
 }
 // Re-render whichever surface is showing board notes (Board tab or Home "recent updates").
 function rerenderBoardSurface(){ if(currentTab==='board') RENDERERS.board(); else RENDERERS.home(); }
@@ -3125,35 +3166,43 @@ function saveMealField(dayId, slot, field, value){
 async function addShoppingItem(){
   const text=el('shop-text').value.trim(); if(!text) return;
   const category=el('shop-cat').value, addedBy=el('shop-adder').value;
+  return withKeyLock('shopping-list', async ()=>{
   const shopping=await loadKey('shopping-list',[]);
   shopping.push({id:uid(), text, category, done:false, addedBy});
   await saveKey('shopping-list', shopping);
   logActivity('add','shopping-list',text,addedBy);
   await RENDERERS['meal-rota']();
+  });
 }
 async function toggleShoppingItem(id, checked){
+  return withKeyLock('shopping-list', async ()=>{
   const shopping=await loadKey('shopping-list',[]);
   const item=shopping.find(x=>x.id===id); if(item) item.done=checked;
   await saveKey('shopping-list', shopping);
   if(item) logActivity('edit','shopping-list',`${checked?'✓ נרכש':'✗ בוטל'}: ${item.text}`);
   await RENDERERS['meal-rota']();
+  });
 }
 async function delShoppingItem(id){
+  return withKeyLock('shopping-list', async ()=>{
   let shopping=await loadKey('shopping-list',[]);
   const removed=shopping.find(x=>x.id===id);
   shopping=shopping.filter(x=>x.id!==id);
   await saveKey('shopping-list', shopping);
   logActivity('del','shopping-list',removed?removed.text:'');
   await RENDERERS['meal-rota']();
+  });
 }
 async function clearDoneShopping(){
   if(!(await confirmModal('למחוק את כל הפריטים שנרכשו?'))) return;
+  return withKeyLock('shopping-list', async ()=>{
   let shopping=await loadKey('shopping-list',[]);
   const n=shopping.filter(x=>x.done).length;
   shopping=shopping.filter(x=>!x.done);
   await saveKey('shopping-list', shopping);
   logActivity('del','shopping-list',`ניקוי ${n} פריטים שנרכשו`);
   await RENDERERS['meal-rota']();
+  });
 }
 async function filterShopCat(cat){ cache.mealShopCat=cat; await RENDERERS['meal-rota'](); }
 
@@ -3449,19 +3498,22 @@ async function saveMapPin(){
   let lat=cache.pendingPinLat, lng=cache.pendingPinLng;
   if(lat==null){ const c=lookupCityCoords(name); if(c){lat=c[0];lng=c[1];}else{lat=VILLA_COORDS[0];lng=VILLA_COORDS[1];} }
   const type=el('pin-type').value, note=el('pin-note').value.trim(), addedBy=el('pin-adder').value;
-  const pins=await loadKey('map-pins',[]);
   const editing=!!cache.editingPinId;
+  await withKeyLock('map-pins', async ()=>{
+  const pins=await loadKey('map-pins',[]);
   if(editing){ const p=pins.find(x=>x.id===cache.editingPinId); if(p){p.name=name;p.type=type;p.note=note;p.addedBy=addedBy;p.lat=lat;p.lng=lng;} }
   else pins.push({id:uid(),name,lat,lng,type,note,addedBy});
   await saveKey('map-pins',pins);
   logActivity(editing?'edit':'add','map-pins',name,addedBy);
   if(cache.tempPinMarker){ cache.tempPinMarker.remove(); cache.tempPinMarker=null; }
   refreshUserPins(pins);
+  });
   if(!cache.mapFilters.custom) toggleMapFilter('custom');
   cancelMapPin();
 }
 async function deleteMapPin(id){
   if(!(await confirmModal('למחוק את המיקום?'))) return;
+  return withKeyLock('map-pins', async ()=>{
   let pins=await loadKey('map-pins',[]);
   const removed=pins.find(p=>p.id===id);
   pins=pins.filter(p=>p.id!==id);
@@ -3469,6 +3521,7 @@ async function deleteMapPin(id){
   logActivity('del','map-pins',removed?removed.name:'');
   if(cache.leafletMap) cache.leafletMap.closePopup();
   refreshUserPins(pins);
+  });
 }
 async function editMapPinForm(id){
   const pins=await loadKey('map-pins',[]);
@@ -3665,6 +3718,7 @@ function selectFolderFam(name){ cache.currentFolderFam = name; cache.folderMembe
 async function addFolderMember(){
   const inp = el('fd-member-name'); const name = (inp.value||'').trim(); if(!name) return;
   const fam = cache.currentFolderFam;
+  return withKeyLock('flight-folder', async ()=>{
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
   const member = {id:uid(), name};
@@ -3672,20 +3726,28 @@ async function addFolderMember(){
   await saveKey('flight-folder', all);
   logActivity('add','flight-folder',`בן משפחה: ${name}`,fam,{kind:'folder-member-add', fam, id:member.id});
   RENDERERS['flight-folder']();
+  });
 }
 async function delFolderMember(id){
   const fam = cache.currentFolderFam;
+  // Read once for the confirm prompt (member name + affected-doc count); the actual
+  // removal re-reads inside the lock so a concurrent upload/edit isn't clobbered.
+  const pre = await loadKey('flight-folder', {});
+  const preFolder = ensureFolder(pre, fam);
+  const pm = preFolder.members.find(x=>x.id===id);
+  const docCount = (preFolder.docs||[]).filter(d=>(d.owners||[]).includes(id)).length;
+  const warn = docCount ? ` ${docCount} מסמכים משויכים אליו/ה יישארו בתיקייה ללא שיוך.` : '';
+  if(!(await confirmModal(`להסיר את ${pm?pm.name:'בן המשפחה'} מהרשימה?${warn}`, {okText:'הסרה', icon:'👤'}))) return;
+  return withKeyLock('flight-folder', async ()=>{
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
   const idx = folder.members.findIndex(x=>x.id===id);
   const m = folder.members[idx];
-  const docCount = (folder.docs||[]).filter(d=>(d.owners||[]).includes(id)).length;
-  const warn = docCount ? ` ${docCount} מסמכים משויכים אליו/ה יישארו בתיקייה ללא שיוך.` : '';
-  if(!(await confirmModal(`להסיר את ${m?m.name:'בן המשפחה'} מהרשימה?${warn}`, {okText:'הסרה', icon:'👤'}))) return;
   folder.members = folder.members.filter(x=>x.id!==id);
   await saveKey('flight-folder', all);
   logActivity('del','flight-folder',`בן משפחה: ${m?m.name:''}`,fam, m?{kind:'folder-member-del', fam, member:m, index:idx}:undefined);
   RENDERERS['flight-folder']();
+  });
 }
 // Wire a drop zone to a hidden <input type=file>: drag-and-drop a file in, or
 // click to browse. `onFile` fires with the chosen File (or null when cleared).
@@ -3765,16 +3827,24 @@ async function uploadFolderDoc(){
       return;
     }
     cache._docBlobs = cache._docBlobs || {}; cache._docBlobs[id] = out.dataUrl; // warm cache so the thumb shows instantly
-    // 2) Add the small metadata record (no dataUrl) to the shared folder key.
-    const all = await loadKey('flight-folder', {});
-    const folder = ensureFolder(all, fam);
-    const doc = { id, title, category, owners, fileName:out.fileName, mime:out.mime, size:out.size, uploadedBy:fam, ts:Date.now() };
-    folder.docs.push(doc);
-    const ok = await saveKey('flight-folder', all, true);
+    // 2) Add the small metadata record (no dataUrl) to the shared folder key —
+    //    serialized so a concurrent upload/edit by another device can't clobber
+    //    the doc list (the read-modify-write must not overlap another one).
+    let doc;
+    const ok = await withKeyLock('flight-folder', async ()=>{
+      const all = await loadKey('flight-folder', {});
+      const folder = ensureFolder(all, fam);
+      doc = { id, title, category, owners, fileName:out.fileName, mime:out.mime, size:out.size, uploadedBy:fam, ts:Date.now() };
+      folder.docs.push(doc);
+      const saved = await saveKey('flight-folder', all, true);
+      if(!saved){
+        folder.docs.pop();              // roll back the in-memory doc...
+        _lsSet('flight-folder', all);   // ...and the local cache, so it won't linger then disappear on sync
+      }
+      return saved;
+    });
     if(!ok){
-      folder.docs.pop();              // roll back the in-memory doc...
-      _lsSet('flight-folder', all);   // ...and the local cache, so it won't linger then disappear on sync
-      deleteDocBlob(id);              // ...and drop the just-saved blob so it doesn't orphan
+      deleteDocBlob(id);              // drop the just-saved blob so it doesn't orphan
       btn.disabled = false; btn.textContent = '⬆️ העלאה לתיקייה';
       alertModal('המסמך לא נשמר בענן — ייתכן שיש בעיית חיבור. נסו שוב בעוד רגע.', '⚠️');
       return;
@@ -3997,6 +4067,7 @@ async function downloadFolderDoc(id){
 async function delFolderDoc(id){
   if(!(await confirmModal('למחוק את המסמך?', {okText:'מחיקה', icon:'🗑️'}))) return;
   const fam = cache.currentFolderFam;
+  return withKeyLock('flight-folder', async ()=>{
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
   const idx = folder.docs.findIndex(d=>d.id===id);
@@ -4008,6 +4079,7 @@ async function delFolderDoc(id){
   // the bug it avoids, and it lives in its own key so it never bloats this one.
   logActivity('del','flight-folder',removed?`${docCat(removed.category).label}: ${removed.title}`:'',fam, removed?{kind:'folder-doc-del', fam, doc:removed, index:idx}:undefined);
   RENDERERS['flight-folder']();
+  });
 }
 function dataUrlToBlob(dataUrl){
   const parts = dataUrl.split(',');
