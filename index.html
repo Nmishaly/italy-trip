@@ -331,6 +331,24 @@ a.link{color:var(--brand); font-weight:600;}
 .day-card.today{border-inline-start-color:var(--green); box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 35%, transparent), var(--shadow);}
 .block-label{font-size:11px; font-weight:700; color:var(--text-soft); margin:9px 0 3px;}
 
+/* itinerary — per-day logistics panel */
+.day-extra{margin-top:12px; border-top:1px dashed var(--border); padding-top:2px;}
+.day-extra > summary{display:flex; align-items:center; gap:8px; flex-wrap:wrap; cursor:pointer; list-style:none;
+  user-select:none; padding:8px 2px; font-size:12.5px; font-weight:700; color:var(--text-soft); border-radius:8px; transition:color .15s;}
+.day-extra > summary::-webkit-details-marker{display:none;}
+.day-extra > summary:hover{color:var(--brand);}
+.day-extra > summary .sum-chevron{margin-inline-start:auto;}
+.day-extra[open] > summary .sum-chevron{transform:rotate(180deg);}
+.dx-badges{display:flex; gap:5px; flex-wrap:wrap;}
+.dx-badge{font-size:10.5px; font-weight:700; background:var(--surface-3); color:var(--text-soft);
+  border:1px solid var(--border-soft); border-radius:9px; padding:2px 8px; white-space:nowrap;}
+.dx-body{padding:4px 2px 4px;}
+.dx-check{display:flex; align-items:center; gap:9px; padding:10px 0 4px; font-size:13.5px; font-weight:600;
+  color:var(--text); cursor:pointer; user-select:none;}
+.dx-check input[type=checkbox]{width:18px; height:18px; accent-color:var(--brand); cursor:pointer; flex-shrink:0;}
+.dx-navbtns{margin-top:6px;}
+.dx-navbtns .btn{flex:1; min-width:110px; font-size:12.5px; padding:9px 10px;}
+
 /* packing assignment chips */
 .pack-item{padding:12px 0; border-bottom:1px solid var(--border-soft);}
 .pack-item:last-child{border-bottom:none;}
@@ -771,8 +789,9 @@ const MOBILE_PRIMARY = ["home","itinerary","packing","contacts"];
 const FAMILIES = ["שלמה ונאוה אנגל","אלעד ועדי לוביץ'","נצר ונעמה משאלי","דניאל ומוריה אנגל","הלל אנגל"];
 const FAM_COLORS = ["#15607F","#D9654B","#3D9B6C","#8254B0","#C9871A"];
 
-const TRIP_START = new Date(2026,6,29); // Jul 29 2026
+const TRIP_START = new Date(2026,6,29); // Jul 29 2026 (Wed) — flight day; used for the countdown
 const TRIP_END   = new Date(2026,7,5);  // Aug 5 2026
+const ROTA_START = new Date(2026,6,30); // Jul 30 2026 (Thu) — first full day at the villa; itinerary & meal rota start here
 
 const VILLA_COORDS = [42.4219, 12.4729];
 const VILLA_ADDRESS = "Strada Vallefigliola, Otricoli, Umbria, Italy";
@@ -1070,7 +1089,7 @@ async function undoActivity(entryId){
   await saveKey('activity-log', log2.slice(-300), true);
   showToast('הפעולה בוטלה ↩️');
   // reset one-time seed guards so restored data re-renders cleanly
-  ['mealRotaInit','shopListInit','packInit','itineraryInit','stayInit','kosherSpotsInit','synsInit'].forEach(k=>cache[k]=undefined);
+  ['packCatsInit','kosherSpotsInit','synsInit'].forEach(k=>cache[k]=undefined);
   RENDERERS.activity();
 }
 
@@ -1105,6 +1124,16 @@ function showToast(msg){
 ============================================================ */
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function el(id){ return document.getElementById(id); }
+// Serialize read-modify-write cycles on the same storage key, so two quick edits
+// (e.g. blurring one field and immediately changing the next) can't overwrite
+// each other's save — the second cycle only starts after the first finished.
+const _keyQueues = {};
+function withKeyLock(key, fn){
+  const run = ()=>Promise.resolve().then(fn);
+  const q = (_keyQueues[key] || Promise.resolve()).then(run, run);
+  _keyQueues[key] = q.catch(()=>{});
+  return q;
+}
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function q(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\x22').replace(/[\r\n]+/g,' '); }
 function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
@@ -1139,6 +1168,16 @@ function navTo(lat, lng, label){
 }
 function navToAddress(addr){ window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`, '_blank', 'noopener'); }
 function openWazeToVilla(){ window.open(`https://waze.com/ul?q=${encodeURIComponent(VILLA_ADDRESS)}&navigate=yes`, '_blank', 'noopener'); }
+function openWazeTo(lat, lng){ window.open(`https://waze.com/ul?ll=${lat}%2C${lng}&navigate=yes`, '_blank', 'noopener'); }
+function openWazeSearch(qstr){ window.open(`https://waze.com/ul?q=${encodeURIComponent(qstr)}&navigate=yes`, '_blank', 'noopener'); }
+// Open a user-pasted link safely: add https:// when the scheme is missing and
+// refuse anything that isn't a web / navigation link (e.g. javascript:).
+function openTripLink(url){
+  url = (url||'').trim(); if(!url) return;
+  if(!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = 'https://' + url;
+  if(!/^(https?|waze|geo):/i.test(url)){ alertModal('הקישור אינו תקין — ודאו שהוא מתחיל ב-https://', '⚠️'); return; }
+  window.open(url, '_blank', 'noopener');
+}
 
 /* ============================================================
    THEME
@@ -1313,7 +1352,8 @@ function computeCountdown(){
   const now = new Date();
   const diff = Math.ceil((TRIP_START - now) / 86400000);
   if(diff > 0) return {num: diff, label:'ימים<br>לטיסה'};
-  if(now <= TRIP_END){
+  const endOfTrip = new Date(TRIP_END); endOfTrip.setHours(23,59,59,999); // the last day still counts as "on the trip"
+  if(now <= endOfTrip){
     const dayN = Math.floor((now - TRIP_START)/86400000) + 1;
     return {num:'🎉', label:`יום ${dayN}<br>בטיול`};
   }
@@ -1503,33 +1543,88 @@ function noteCardHtml(n, withDel){
 
 /* ---------- ITINERARY ---------- */
 const HE_DOW = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','שבת'];
+function fmtDM(d){ return d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'}); }
+// True when a stored date string is the old Wednesday flight-day (29.07) — robust to '29.07' / '29.7' / '29/07'.
+function isOldWednesdayDate(str){ const m=(str||'').match(/(\d{1,2})\D+(\d{1,2})/); return !!m && +m[1]===29 && +m[2]===7; }
 function defaultItinerary(){
-  const days=[]; let d = new Date(TRIP_START); let i=1;
+  const days=[]; let d = new Date(ROTA_START); let i=1;
   while(d <= TRIP_END){
-    days.push({id:uid(), num:i, date: d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'}), city:'', morning:'', noon:'', evening:''});
+    days.push({id:uid(), num:i, date: fmtDM(d), city:'', morning:'', noon:'', evening:'',
+      owner:'', directions:'', navLink:'', needTickets:false, ticketsLink:'', needGear:false, gear:''});
     d.setDate(d.getDate()+1); i++;
   }
   return days;
 }
-function dayDate(num){ const d = new Date(TRIP_START); d.setDate(d.getDate()+(num-1)); return d; }
+function dayDate(num){ const d = new Date(ROTA_START); d.setDate(d.getDate()+(num-1)); return d; }
 function isToday(d){ const n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
 
+// One-time migration: the itinerary used to start on Wednesday (flight day 29.07).
+// It now starts Thursday morning — drop the Wednesday entry, carry anything the
+// family already wrote for it into Thursday (so nothing is lost) and renumber.
+// Returns the migrated array, or null when the data is already in the new shape.
+function migrateItineraryStart(days){
+  if(!Array.isArray(days) || !days.length || !isOldWednesdayDate(days[0].date)) return null;
+  const out = days.map(d=>({...d}));
+  const wed = out.shift();
+  if(out.length){
+    const thu = out[0];
+    if(wed.city) thu.city = thu.city ? `${thu.city} / ${wed.city}` : wed.city;
+    ['morning','noon','evening'].forEach(f=>{
+      if(wed[f]) thu[f] = `(מיום רביעי 29.07) ${wed[f]}${thu[f] ? '\n' + thu[f] : ''}`;
+    });
+  }
+  out.forEach((d,i)=>{ d.num = i+1; d.date = fmtDM(dayDate(i+1)); });
+  return out;
+}
+
+function shortFam(f){ return (f||'').trim().replace(/\s+\S+$/,'') || f; }
+
 RENDERERS.itinerary = async function(){
-  const days = await loadKey('itinerary-days', null, {swr:true}) || defaultItinerary();
-  if(!cache.itineraryInit){ await saveKey('itinerary-days', days); cache.itineraryInit = true; }
+  cache.itinExtras = cache.itinExtras || {};
+  let days = await loadKey('itinerary-days', null, {swr:true});
+  if(!days){ days = defaultItinerary(); await saveKey('itinerary-days', days, true); }
+  else if(migrateItineraryStart(days)){
+    // The cached copy still starts on Wednesday — re-read network-first so we
+    // migrate the freshest server data, then persist the new shape once.
+    const fresh = await loadKey('itinerary-days', days);
+    const migrated = migrateItineraryStart(fresh);
+    if(migrated){ await saveKey('itinerary-days', migrated, true); logActivity('edit','itinerary-days','המסלול עודכן להתחיל מיום חמישי בבוקר'); days = migrated; }
+    else days = fresh;
+  }
   el('main-content').innerHTML = `<div class="section-title">🗓️ המסלול היומי</div>
-    <p class="section-sub">כולם יכולים לערוך — השינויים נשמרים אוטומטית. לחצו על שם עיר מוכרת כדי לראותה במפה.</p>
+    <p class="section-sub">כולם יכולים לערוך — השינויים נשמרים אוטומטית. פתחו את "לוגיסטיקה ופרטי פעילות" בכל יום כדי לקבוע אחראי, הוראות הגעה, כרטיסים וציוד.</p>
     <div id="days-list"></div>`;
   const list = el('days-list');
   list.innerHTML = days.map(day => {
-    const d = dayDate(day.num); const today = isToday(d);
+    const d = dayDate(day.num); const today = isToday(d); const shabbat = d.getDay()===6;
     const coords = lookupCityCoords(day.city);
+    const extraOpen = !!cache.itinExtras[day.id];
+    const badges = [
+      day.owner?`<span class="dx-badge">👤 ${escapeHtml(shortFam(day.owner))}</span>`:'',
+      (day.directions||day.navLink)?`<span class="dx-badge">🚗 הגעה</span>`:'',
+      day.needTickets?`<span class="dx-badge">🎟️ כרטיסים</span>`:'',
+      day.needGear?`<span class="dx-badge">🎒 ציוד</span>`:''
+    ].filter(Boolean).join('');
+    const famOpts = [`<option value="">— מי אחראי? —</option>`]
+      .concat(FAMILIES.map(f=>`<option value="${escapeHtml(f)}"${day.owner===f?' selected':''}>${escapeHtml(f)}</option>`)).join('');
+    const navBtns = [
+      day.navLink?`<button class="btn btn-nav" onclick="openTripLink('${q(day.navLink)}')">🧭 פתיחת קישור הניווט</button>`:'',
+      coords?`<button class="btn btn-ghost" onclick="openWazeTo(${coords[0]},${coords[1]})">🚙 Waze</button><button class="btn btn-ghost" onclick="navTo(${coords[0]},${coords[1]},'${q(day.city)}')">📍 Google Maps</button>`
+        : (day.city?`<button class="btn btn-ghost" onclick="openWazeSearch('${q(day.city)}')">🚙 Waze</button><button class="btn btn-ghost" onclick="mapSearch('${q(day.city)}')">📍 Google Maps</button>`:'')
+    ].filter(Boolean).join('');
+    const ticketsRow = day.needTickets ? `<div class="row" style="margin-top:6px">
+        <input type="text" inputmode="url" data-field="ticketsLink" data-id="${day.id}" value="${escapeHtml(day.ticketsLink||'')}" placeholder="הדביקו קישור לרכישת כרטיסים..." aria-label="קישור לרכישת כרטיסים">
+        ${day.ticketsLink?`<button class="btn btn-accent" onclick="openTripLink('${q(day.ticketsLink)}')">🎟️ לרכישה</button>`:''}
+      </div>` : '';
+    const gearRow = day.needGear ? `<textarea data-field="gear" data-id="${day.id}" placeholder="איזה ציוד? (נעלי הליכה, בגדי ים, כובעים, פנסים...)" style="margin-top:6px">${escapeHtml(day.gear||'')}</textarea>` : '';
     return `
     <div class="card day-card ${today?'today':''}" data-id="${day.id}">
       <div class="day-head">
         <span class="dnum">יום ${day.num}</span>
         <input type="text" value="${escapeHtml(day.city)}" placeholder="עיר / אזור..." data-field="city" data-id="${day.id}" aria-label="עיר ליום ${day.num}">
         <span class="muted" style="white-space:nowrap">${HE_DOW[d.getDay()]} · ${day.date}</span>
+        ${today?'<span class="tag" style="background:var(--green)">היום</span>':''}
+        ${shabbat?'<span class="tag" style="background:var(--terra)">שבת ✨</span>':''}
         ${coords?`<button class="btn-icon" title="ניווט" aria-label="ניווט אל ${escapeHtml(day.city)}" onclick="navTo(${coords[0]},${coords[1]},'${q(day.city)}')">🧭</button>`:''}
       </div>
       <div class="block-label">🌅 בוקר</div>
@@ -1538,15 +1633,46 @@ RENDERERS.itinerary = async function(){
       <textarea data-field="noon" data-id="${day.id}" placeholder="פעילות צהריים...">${escapeHtml(day.noon)}</textarea>
       <div class="block-label">🌙 ערב</div>
       <textarea data-field="evening" data-id="${day.id}" placeholder="פעילות ערב...">${escapeHtml(day.evening)}</textarea>
+      <details class="day-extra" data-extra-id="${day.id}"${extraOpen?' open':''}>
+        <summary>🧭 לוגיסטיקה ופרטי פעילות ${badges?`<span class="dx-badges">${badges}</span>`:''}<span class="sum-chevron">▼</span></summary>
+        <div class="dx-body">
+          <label class="lbl">👤 אחראי/ת על הפעילות</label>
+          <select class="field" data-field="owner" data-id="${day.id}" aria-label="אחראי על הפעילות ליום ${day.num}">${famOpts}</select>
+          <label class="lbl" style="margin-top:10px">🚗 איך מגיעים</label>
+          <textarea data-field="directions" data-id="${day.id}" placeholder="הוראות הגעה, חניה, זמן נסיעה, נקודת מפגש...">${escapeHtml(day.directions||'')}</textarea>
+          <div class="row" style="margin-top:6px">
+            <input type="text" inputmode="url" data-field="navLink" data-id="${day.id}" value="${escapeHtml(day.navLink||'')}" placeholder="הדביקו קישור ניווט (Waze / Google Maps)..." aria-label="קישור ניווט">
+          </div>
+          ${navBtns?`<div class="row dx-navbtns">${navBtns}</div>`:''}
+          <label class="dx-check"><input type="checkbox" data-field="needTickets" data-id="${day.id}"${day.needTickets?' checked':''}> 🎟️ צריך לקנות כרטיסים</label>
+          ${ticketsRow}
+          <label class="dx-check"><input type="checkbox" data-field="needGear" data-id="${day.id}"${day.needGear?' checked':''}> 🎒 צריך ציוד מיוחד</label>
+          ${gearRow}
+        </div>
+      </details>
     </div>`;
   }).join('');
   list.querySelectorAll('[data-field]').forEach(elm=>{
-    elm.addEventListener('change', async ()=>{
+    elm.addEventListener('change', ()=>{
       const id = elm.dataset.id, field = elm.dataset.field;
-      const arr = await loadKey('itinerary-days', days);
-      const dd = arr.find(x=>x.id===id);
-      if(dd){ const fieldHe={city:'עיר',morning:'בוקר',noon:'צהריים',evening:'ערב'}[field]||field; dd[field] = elm.value; await saveKey('itinerary-days', arr); logActivity('edit','itinerary-days',`יום ${dd.num}${dd.city?' · '+dd.city:''} — ${fieldHe}`); if(field==='city') RENDERERS.itinerary(); }
+      const val = elm.type==='checkbox' ? elm.checked : elm.value;
+      withKeyLock('itinerary-days', async ()=>{
+        const arr = await loadKey('itinerary-days', days);
+        const dd = arr.find(x=>x.id===id);
+        if(!dd) return;
+        if(dd[field] === val) return; // change may fire without an actual edit
+        dd[field] = val;
+        await saveKey('itinerary-days', arr);
+        const fieldHe={city:'עיר',morning:'בוקר',noon:'צהריים',evening:'ערב',owner:'אחראי',directions:'הוראות הגעה',navLink:'קישור ניווט',needTickets:'כרטיסים',ticketsLink:'קישור כרטיסים',needGear:'ציוד מיוחד',gear:'ציוד'}[field]||field;
+        logActivity('edit','itinerary-days',`יום ${dd.num}${dd.city?' · '+dd.city:''} — ${fieldHe}`);
+        // fields that affect badges / buttons / conditional inputs need a re-render
+        if(['city','owner','navLink','needTickets','ticketsLink','needGear'].includes(field)) RENDERERS.itinerary();
+      });
     });
+  });
+  // remember which logistics panels are open, so re-renders don't collapse them
+  list.querySelectorAll('details.day-extra').forEach(dx=>{
+    dx.addEventListener('toggle', ()=>{ cache.itinExtras[dx.dataset.extraId] = dx.open; });
   });
 };
 
@@ -1624,8 +1750,8 @@ function defaultStay(){
   };
 }
 RENDERERS.stay = async function(){
-  const s = await loadKey('stay-flights', null, {swr:true}) || defaultStay();
-  if(!cache.stayInit){ await saveKey('stay-flights', s); cache.stayInit = true; }
+  let s = await loadKey('stay-flights', null, {swr:true});
+  if(!s){ s = defaultStay(); await saveKey('stay-flights', s, true); } // seed only when the key is truly empty
   el('main-content').innerHTML = `
     <div class="section-title">✈️ טיסות<button class="small-btn" style="margin-inline-start:auto" onclick="editStay()">✏️ עריכה</button></div>
     <div class="info-box"><b>הלוך — ${escapeHtml(s.flights.out.num)}</b><br>${escapeHtml(s.flights.out.date)}<br>המראה: ${escapeHtml(s.flights.out.dep)}<br>נחיתה: ${escapeHtml(s.flights.out.arr)}</div>
@@ -2227,13 +2353,14 @@ function setPackView(v){ cache.packView=v; cache.editPack=null; RENDERERS.packin
 function selectPackPerson(name){ cache.currentPerson=name; cache.editPack=null; renderPackBody(); }
 
 async function renderPackBody(){
-  const shared = await loadKey('packing-shared', null, {swr:true}) || defaultSharedPacking();
-  if(!cache.packInit){ await saveKey('packing-shared', shared); cache.packInit=true; }
+  let shared = await loadKey('packing-shared', null, {swr:true});
+  if(!shared){ shared = defaultSharedPacking(); await saveKey('packing-shared', shared, true); } // seed only when the key is truly empty
   let cats = await loadKey('pack-categories', null, {swr:true});
-  if(!Array.isArray(cats) || !cats.length) cats = defaultPackCategories();
-  if(!cats.some(c=>c.id==='general')) cats.push({id:'general', icon:'📦', label:'כללי', subs:[]});
+  let catsChanged = false;
+  if(!Array.isArray(cats) || !cats.length){ cats = defaultPackCategories(); catsChanged = true; }
+  if(!cats.some(c=>c.id==='general')){ cats.push({id:'general', icon:'📦', label:'כללי', subs:[]}); catsChanged = true; }
   cache.packCats = cats;
-  if(!cache.packCatsInit){ await saveKey('pack-categories', cats, true); cache.packCatsInit=true; }
+  if(catsChanged && !cache.packCatsInit){ await saveKey('pack-categories', cats, true); cache.packCatsInit=true; }
   const personalAll = await loadKey('packing-personal', {}, {swr:true});
   if(!cache.currentPerson) cache.currentPerson = FAMILIES[0];
   if(!cache.packCatFilter) cache.packCatFilter='all';
@@ -2547,8 +2674,8 @@ function defaultContacts(){
   ];
 }
 RENDERERS.contacts = async function(){
-  const contacts = await loadKey('contacts', null, {swr:true}) || defaultContacts();
-  if(!cache.contactsInit){ await saveKey('contacts', contacts); cache.contactsInit=true; }
+  let contacts = await loadKey('contacts', null, {swr:true});
+  if(!contacts){ contacts = defaultContacts(); await saveKey('contacts', contacts, true); } // seed only when the key is truly empty
   el('main-content').innerHTML = `
     <div class="section-title">📞 אנשי קשר חשובים</div>
     <div id="contacts-list"></div>
@@ -2797,11 +2924,11 @@ const MEAL_CAT_COLORS = {pareve:'var(--green)', dairy:'var(--brand)', produce:'#
 
 function defaultMealRota(){
   const days=[], endMs=TRIP_END.getTime();
-  let d=new Date(TRIP_START), dayNum=1;
+  let d=new Date(ROTA_START), dayNum=1;
   while(d.getTime()<=endMs){
     const dow=d.getDay(), isShabbat=dow===6, isErevShabbat=dow===5;
-    const isArrival=dayNum===1, isDeparture=d.getTime()===endMs;
-    const dateStr=d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
+    const isFirst=dayNum===1, isDeparture=d.getTime()===endMs;
+    const dateStr=fmtDM(d);
     const HE_DAY=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','שבת'][dow];
     let dayLabel, meals;
     if(isShabbat){
@@ -2818,20 +2945,13 @@ function defaultMealRota(){
         {slot:'lunch',          label:'🌤 ארוחת צהריים',  families:[], dish:'', note:''},
         {slot:'shabbat-dinner', label:'🕯️ סעודת שבת',    families:[], dish:'', note:'הדלקת נרות: 20:06'}
       ];
-    } else if(isArrival){
-      dayLabel=`יום ${HE_DAY} — הגעה לווילה`;
-      meals=[
-        {slot:'breakfast', label:'☀️ ארוחת בוקר',   families:[], dish:'', note:'טיסה 18:00 — אכילה בנתב"ג'},
-        {slot:'lunch',     label:'🌤 ארוחת צהריים',  families:[], dish:'', note:''},
-        {slot:'dinner',    label:'🌙 ארוחת ערב',     families:[], dish:'ארוחת פתיחה — ראשונה בווילה 🎉', note:'נחיתה ~20:40 ✈️'}
-      ];
     } else if(isDeparture){
       dayLabel=`יום ${HE_DAY} — יום עזיבה`;
       meals=[ {slot:'breakfast', label:'☀️ ארוחת בוקר אחרונה', families:[], dish:'', note:"צ'ק-אאוט עד 10:00 🧳"} ];
     } else {
-      dayLabel=`יום ${HE_DAY}`;
+      dayLabel = isFirst ? `יום ${HE_DAY} — יום ראשון בווילה` : `יום ${HE_DAY}`;
       meals=[
-        {slot:'breakfast', label:'☀️ ארוחת בוקר',  families:[], dish:'', note:''},
+        {slot:'breakfast', label:'☀️ ארוחת בוקר',  families:[], dish:'', note:isFirst?'בוקר ראשון בווילה 🎉':''},
         {slot:'lunch',     label:'🌤 ארוחת צהריים', families:[], dish:'', note:''},
         {slot:'dinner',    label:'🌙 ארוחת ערב',    families:[], dish:'', note:''}
       ];
@@ -2840,6 +2960,30 @@ function defaultMealRota(){
     d.setDate(d.getDate()+1); dayNum++;
   }
   return days;
+}
+// One-time migration: the rota used to start on Wednesday (flight day 29.07,
+// landing ~20:40 — no villa meals). It now starts Thursday morning. Anything the
+// family already filled in for Wednesday (assignments / dishes / notes beyond the
+// seeded defaults) is carried into a note on the new first day, so nothing is lost.
+function migrateMealRotaStart(days){
+  if(!Array.isArray(days) || !days.length || !isOldWednesdayDate(days[0].date)) return null;
+  const out = days.map(d=>({...d, meals:(d.meals||[]).map(m=>({...m}))}));
+  const wed = out.shift();
+  const seeded = { 'breakfast:note':'טיסה 18:00 — אכילה בנתב"ג', 'dinner:dish':'ארוחת פתיחה — ראשונה בווילה 🎉', 'dinner:note':'נחיתה ~20:40 ✈️' };
+  const carried=[];
+  (wed.meals||[]).forEach(m=>{
+    const bits=[];
+    if((m.families||[]).length) bits.push(m.families.join(', '));
+    if(m.dish && m.dish !== (seeded[m.slot+':dish']||'')) bits.push(m.dish);
+    if(m.note && m.note !== (seeded[m.slot+':note']||'')) bits.push(m.note);
+    if(bits.length) carried.push(`${(m.label||m.slot).replace(/^[^֐-׿]+/,'').trim()}: ${bits.join(' · ')}`);
+  });
+  if(carried.length && out.length && (out[0].meals||[]).length){
+    const first = out[0].meals[0];
+    first.note = `מיום רביעי 29.07: ${carried.join(' | ')}${first.note ? ' · ' + first.note : ''}`;
+  }
+  out.forEach((d,i)=>{ d.dayNum = i+1; d.date = fmtDM(dayDate(i+1)); });
+  return out;
 }
 function defaultShoppingList(){
   return [
@@ -2857,17 +3001,27 @@ function defaultShoppingList(){
 RENDERERS['meal-rota'] = async function(){
   if(!cache.mealShopCat) cache.mealShopCat='all';
   if(!cache.mealView) cache.mealView='meals';
-  const days = await loadKey('meal-rota', null, {swr:true}) || defaultMealRota();
-  if(!cache.mealRotaInit){ await saveKey('meal-rota', days); cache.mealRotaInit=true; }
-  const shopping = await loadKey('shopping-list', null, {swr:true}) || defaultShoppingList();
-  if(!cache.shopListInit){ await saveKey('shopping-list', shopping); cache.shopListInit=true; }
+  let days = await loadKey('meal-rota', null, {swr:true});
+  if(!days){ days = defaultMealRota(); await saveKey('meal-rota', days, true); }
+  else if(migrateMealRotaStart(days)){
+    // Cached copy still starts on Wednesday — migrate the freshest server data once.
+    const fresh = await loadKey('meal-rota', days);
+    const migrated = migrateMealRotaStart(fresh);
+    if(migrated){ await saveKey('meal-rota', migrated, true); logActivity('edit','meal-rota','חלוקת הארוחות עודכנה להתחיל מיום חמישי בבוקר'); days = migrated; }
+    else days = fresh;
+  }
+  let shopping = await loadKey('shopping-list', null, {swr:true});
+  if(!shopping){ shopping = defaultShoppingList(); await saveKey('shopping-list', shopping, true); }
   el('main-content').innerHTML = buildMealRotaHtml(days, shopping);
 };
 function setMealView(v){ cache.mealView=v; RENDERERS['meal-rota'](); }
 function buildMealRotaHtml(days, shopping){
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const dayCards = days.map(day=>{
     const accent = day.isShabbat ? 'var(--terra)' : day.isErevShabbat ? 'var(--accent)' : 'var(--brand)';
-    const today = isToday(dayDate(day.dayNum));
+    const dDate = dayDate(day.dayNum);
+    const today = isToday(dDate);
+    const past = !today && dDate < todayStart; // days that already passed start collapsed
     const badge = day.isShabbat ? `<span class="tag" style="background:var(--terra)">שבת קודש ✨</span>`
       : day.isErevShabbat ? `<span class="tag" style="background:var(--accent);color:var(--accent-ink)">ערב שבת 🕯️</span>` : '';
     const slots = day.meals.map(meal=>{
@@ -2882,7 +3036,7 @@ function buildMealRotaHtml(days, shopping){
         <input class="meal-note-input" type="text" value="${escapeHtml(meal.note||'')}" placeholder="הערה (שעה, אלרגיה, קניות...)" onblur="saveMealField('${day.id}','${meal.slot}','note',this.value)">
       </div>`;
     }).join('');
-    return `<details class="meal-day" style="border-inline-start:5px solid ${accent}${today?';box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 40%,transparent),var(--shadow)':''}" open>
+    return `<details class="meal-day" style="border-inline-start:5px solid ${accent}${today?';box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 40%,transparent),var(--shadow)':''}"${past?'':' open'}>
       <summary>
         <span style="font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:16px;color:var(--text)">יום ${day.dayNum}</span>
         <span style="font-size:13px;color:var(--brand);font-weight:600">${escapeHtml(day.dayLabel)}</span>
@@ -2945,24 +3099,28 @@ function buildMealRotaHtml(days, shopping){
     ${view==='shop' ? shopSection : mealsSection}
   `;
 }
-async function toggleMealFamily(dayId, slot, family, checked){
-  const days=await loadKey('meal-rota',[]);
-  const day=days.find(d=>d.id===dayId); if(!day) return;
-  const meal=day.meals.find(m=>m.slot===slot); if(!meal) return;
-  if(!meal.families) meal.families=[];
-  if(checked){ if(!meal.families.includes(family)) meal.families.push(family); }
-  else { meal.families=meal.families.filter(f=>f!==family); }
-  await saveKey('meal-rota', days);
-  logActivity('edit','meal-rota',`${day.dayLabel} · ${(meal.label||'').replace(/[^֐-׿\s]/g,'').trim()} — ${checked?'שובץ':'הוסר'}`,family);
+function toggleMealFamily(dayId, slot, family, checked){
+  return withKeyLock('meal-rota', async ()=>{
+    const days=await loadKey('meal-rota',[]);
+    const day=days.find(d=>d.id===dayId); if(!day) return;
+    const meal=day.meals.find(m=>m.slot===slot); if(!meal) return;
+    if(!meal.families) meal.families=[];
+    if(checked){ if(!meal.families.includes(family)) meal.families.push(family); }
+    else { meal.families=meal.families.filter(f=>f!==family); }
+    await saveKey('meal-rota', days);
+    logActivity('edit','meal-rota',`${day.dayLabel} · ${(meal.label||'').replace(/[^֐-׿\s]/g,'').trim()} — ${checked?'שובץ':'הוסר'}`,family);
+  });
 }
-async function saveMealField(dayId, slot, field, value){
-  const days=await loadKey('meal-rota',[]);
-  const day=days.find(d=>d.id===dayId); if(!day) return;
-  const meal=day.meals.find(m=>m.slot===slot); if(!meal) return;
-  if(meal[field]===value) return; // no change (onblur fires even without edits)
-  meal[field]=value;
-  await saveKey('meal-rota', days);
-  logActivity('edit','meal-rota',`${day.dayLabel} · ${field==='dish'?'תפריט':'הערה'}${value?': '+value:''}`);
+function saveMealField(dayId, slot, field, value){
+  return withKeyLock('meal-rota', async ()=>{
+    const days=await loadKey('meal-rota',[]);
+    const day=days.find(d=>d.id===dayId); if(!day) return;
+    const meal=day.meals.find(m=>m.slot===slot); if(!meal) return;
+    if(meal[field]===value) return; // no change (onblur fires even without edits)
+    meal[field]=value;
+    await saveKey('meal-rota', days);
+    logActivity('edit','meal-rota',`${day.dayLabel} · ${field==='dish'?'תפריט':'הערה'}${value?': '+value:''}`);
+  });
 }
 async function addShoppingItem(){
   const text=el('shop-text').value.trim(); if(!text) return;
