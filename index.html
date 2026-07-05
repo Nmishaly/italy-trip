@@ -1964,6 +1964,66 @@ async function saveStayEdit(){
 }
 
 /* ---------- KOSHER & SHABBAT ---------- */
+// Status levels for the supermarket product guide
+const KOSHER_STATUS = {
+  ok:    {label:'מותר ללא הכשר', color:'var(--green)'},
+  check: {label:'דורש בדיקה',    color:'#C98A00'},
+  need:  {label:'דורש הכשר',      color:'var(--terra)'},
+  no:    {label:'להימנע',         color:'var(--danger)'}
+};
+// Curated supermarket guide, focused on Italy. Based on "צהר לכשרות בחו״ל" & common
+// practice — a concise reference, not a substitute for verifying certification in place.
+const KOSHER_MARKET_GUIDE = [
+  {cat:'חלב וגבינות', items:[
+    {n:'חלב סתם (ללא תוספות)', s:'ok', note:'באיחוד האירופי ניתן להקל'},
+    {n:'חמאה ללא תוספות', s:'ok'},
+    {n:'גבינות קשות/חצי-קשות (מוצרלה, פרמזן)', s:'need', note:'דורשות הכשר'},
+    {n:'יוגורט טבעי', s:'check', note:'לבדוק תוספות ותרביות'},
+  ]},
+  {cat:'לחם, פסטה ומאפים', items:[
+    {n:'פסטה יבשה רגילה', s:'ok'},
+    {n:'לחם / פניני', s:'check', note:'לוודא שאין שומן מן החי (strutto) ותבניות משומנות במרגרינה'},
+    {n:'עוגות ומאפים אפויים', s:'need'},
+  ]},
+  {cat:'שתייה חמה', items:[
+    {n:'אספרסו / אמריקנו / קפוצ׳ינו', s:'ok'},
+    {n:'תה שחור / ירוק / לבן טהור', s:'ok'},
+    {n:'תה פירות / בטעמים / אייס-קפה', s:'no', note:'ללא הכשר'},
+  ]},
+  {cat:'שמנים ובסיס', items:[
+    {n:'שמן זית Extra Virgin', s:'ok'},
+    {n:'טחינה גולמית', s:'ok'},
+    {n:'חומץ בלסמי', s:'need'},
+  ]},
+  {cat:'דגים ושימורים', items:[
+    {n:'סלמון מעושן (אריזת ואקום, עם עור/סנפיר)', s:'ok'},
+    {n:'טונה בשימורים', s:'check', note:'עדיף בהכשר'},
+  ]},
+  {cat:'ירקות ופירות', items:[
+    {n:'ירקות ופירות טריים', s:'ok', note:'בדיקת חרקים כנדרש'},
+    {n:'ירקות קפואים (לא מטוגנים / צ׳יפס)', s:'ok'},
+    {n:'שימורי ירקות וקטניות', s:'check'},
+  ]},
+  {cat:'ממתקים וחטיפים', items:[
+    {n:'שוקולד וחטיפים', s:'need'},
+    {n:'גלידה', s:'need'},
+  ]},
+  {cat:'אלכוהול', items:[
+    {n:'יין', s:'need', note:'סתם יינם — דורש הכשר'},
+    {n:'בירה / וויסקי', s:'ok'},
+    {n:'וודקה', s:'check'},
+  ]},
+];
+// Map guide categories onto the shopping-list categories
+const KOSHER_SHOP_CAT = {'חלב וגבינות':'dairy','ירקות ופירות':'produce'};
+// Kosher symbols to look for in Italy
+const KOSHER_HECHSHERIM = [
+  {n:'רבנות הקהילות באיטליה', d:'Assemblea dei Rabbini d\'Italia — הכשר הקהילות היהודיות המקומיות (רומא, מילאנו ועוד)'},
+  {n:'הרבנות של רומא', d:'הכשר הקהילה היהודית ברומא — נפוץ במסעדות ובמאפיות ברובע היהודי (הגטו)'},
+  {n:'הכשרים בינלאומיים', d:'OU · OK · Star-K · Kof-K — סמלים מוכרים על מוצרים ארוזים מיובאים'},
+  {n:'שימו לב', d:'תמיד בדקו תעודת הכשר בתוקף בפועל במקום, וסמל ברור על האריזה — לא כל סניף של רשת הוא כשר'},
+];
+
 RENDERERS.kosher = async function(){
   let kosherSpots = await loadKey('kosher-spots', null, {swr:true});
   if(!kosherSpots){
@@ -1980,7 +2040,30 @@ RENDERERS.kosher = async function(){
     syns = [{id:uid(), name:"Tempio Maggiore di Roma (בית הכנסת הגדול)", address:"Lungotevere de' Cenci, 00186 Roma", phone:"+39 06 6840 0651"}];
     if(!cache.synsInit){ await saveKey('synagogues', syns); cache.synsInit=true; }
   }
-  el('main-content').innerHTML = `
+
+  const tab = cache.kosherTab || 'dining';
+  const tabs = [['dining','🍽️','שבת ומסעדות'],['market','🛒','קניות בסופר'],['hechsher','🏅','הכשרים'],['guide','📖','המדריך']];
+  const tabBar = `<div class="shop-cat-bar" style="margin-bottom:12px">${tabs.map(([id,ic,lbl])=>
+    `<button class="shop-cat-tab${id===tab?' active':''}" onclick="setKosherTab('${id}')">${ic} ${lbl}</button>`).join('')}</div>`;
+
+  let body='';
+  if(tab==='dining')        body = kosherDiningHtml();
+  else if(tab==='market')   body = kosherMarketHtml();
+  else if(tab==='hechsher') body = kosherHechsherHtml();
+  else                      body = kosherGuideHtml();
+
+  el('main-content').innerHTML = tabBar + body;
+
+  if(tab==='dining'){
+    renderSynList(syns);
+    renderKosherList(kosherSpots);
+    ensureShabbatTimes();
+  }
+};
+function setKosherTab(t){ cache.kosherTab=t; RENDERERS.kosher(); }
+
+function kosherDiningHtml(){
+  return `
     <div class="section-title">🕯️ שבת בטיול</div>
     <div class="info-box">
       הטיול כולל שבת אחת: <b>יום שישי 31.7 – שבת 1.8.2026</b><br>
@@ -2008,9 +2091,44 @@ RENDERERS.kosher = async function(){
       <div class="row"><input type="text" id="addr-search" placeholder="הקלידו כתובת או עיר באיטליה..."></div>
       <button class="btn btn-save btn-block" onclick="searchKosherNear()">חיפוש "כשר" ב-Google Maps</button>
       <p class="muted" style="margin-top:8px">פותח חיפוש ב-Google Maps בכרטיסייה חדשה — שימו לב לבדוק תעודת הכשר בפועל במקום.</p>
-    </div>
+    </div>`;
+}
 
-    <div class="section-title">📖 עיקרי המדריך של צהר</div>
+function kosherMarketHtml(){
+  const legend = Object.values(KOSHER_STATUS).map(v=>
+    `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;margin-inline-end:12px;white-space:nowrap"><span style="width:10px;height:10px;border-radius:50%;background:${v.color};display:inline-block"></span>${v.label}</span>`).join('');
+  const cats = KOSHER_MARKET_GUIDE.map(g=>{
+    const shopCat = KOSHER_SHOP_CAT[g.cat] || 'pareve';
+    const rows = g.items.map(it=>{
+      const st = KOSHER_STATUS[it.s];
+      const canAdd = it.s==='ok' || it.s==='check';
+      return `<div class="card list-card">
+        <div style="min-width:0"><b>${escapeHtml(it.n)}</b>${it.note?`<div class="muted" style="margin-top:3px">${escapeHtml(it.note)}</div>`:''}</div>
+        <div class="lc-actions">
+          <span class="tag" style="background:${st.color}">${st.label}</span>
+          ${canAdd?`<button class="btn-icon" title="הוספה לרשימת הקניות" aria-label="הוספה לרשימת הקניות" onclick="addKosherProductToShopping('${q(it.n)}','${shopCat}')">🛒</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="section-title">${escapeHtml(g.cat)}</div>${rows}`;
+  }).join('');
+  return `
+    <div class="info-box" style="margin-bottom:12px">
+      <div style="display:flex;flex-wrap:wrap;gap:4px 0">${legend}</div>
+      <div class="muted" style="margin-top:8px">מדריך מתומצת למוצרים בסופר האיטלקי. הקישו 🛒 להוספת פריט מותר לרשימת הקניות. לכל שאלה הלכתית — פנו לרב.</div>
+    </div>
+    ${cats}`;
+}
+
+function kosherHechsherHtml(){
+  return `<div class="section-title">🏅 סמלי כשרות באיטליה</div>` +
+    KOSHER_HECHSHERIM.map(h=>`
+    <div class="card"><b>${escapeHtml(h.n)}</b><div class="muted" style="margin-top:4px">${escapeHtml(h.d)}</div></div>`).join('');
+}
+
+function kosherGuideHtml(){
+  return `
+    <div class="section-title">📖 עיקרי המדריך</div>
     <div class="info-box">
       <b>התארגנות:</b> תיאום מראש לארוחות בטיסה, בירור עם קהילה מקומית, ובדיקת חומרי גלם מראש עדיפים על אילתור במקום.<br><br>
       <b>בטיסה:</b> מותר וודקה אסור, בירה ווויסקי מותרים ללא הכשר. יש לוודא הזמנת ארוחה כשרה 48 שעות מראש ובשעת הכרטוס, ולבדוק שהיא מגיעה סגורה וחתומה.<br><br>
@@ -2021,11 +2139,25 @@ RENDERERS.kosher = async function(){
       <b>מוצרים בסיסיים שניתן לקנות גם ללא הכשר:</b> סלמון מעושן (מאריזת ואקום), טחינה גולמית, שמן זית Extra Virgin, פסטה יבשה רגילה, ירקות קפואים (לא צ'יפס), חלב סויה ללא תוספת.
     </div>
     <p class="muted">המידע מבוסס על חוברת "צהר לכשרות בחו"ל" — לכל שאלה הלכתית פנו לרב.</p>
-  `;
-  renderSynList(syns);
-  renderKosherList(kosherSpots);
-  ensureShabbatTimes();
-};
+
+    <div class="section-title">🔗 מדריך "כשר לכתחילה"</div>
+    <div class="card">
+      <b>כשר לכתחילה — כשרות בטיולים בחו"ל</b>
+      <div class="muted" style="margin:6px 0 12px">מדריך מפורט לרכישת מוצרים ולאכילה בחו"ל, לפי מדינה. פתחו לעיון מלא ולבדיקת עדכונים לאיטליה.</div>
+      <a class="btn btn-save btn-block" href="https://kosherlekatchila.com/" target="_blank" rel="noopener">פתיחת המדריך המלא ↗</a>
+    </div>`;
+}
+
+async function addKosherProductToShopping(name, category){
+  return withKeyLock('shopping-list', async ()=>{
+    const shopping = await loadKey('shopping-list', []);
+    if(shopping.some(x=>x.text===name && !x.done)){ showToast('כבר ברשימת הקניות'); return; }
+    shopping.push({id:uid(), text:name, category:category||'pareve', done:false, addedBy:''});
+    await saveKey('shopping-list', shopping);
+    logActivity('add','shopping-list',name);
+    showToast('נוסף לרשימת הקניות ✓');
+  });
+}
 function renderSynList(syns){
   el('syn-list').innerHTML = syns.length ? syns.map(s=>`
     <div class="card list-card">
