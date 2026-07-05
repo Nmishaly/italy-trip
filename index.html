@@ -471,7 +471,7 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
   text-align:center; transform:scale(.94); transition:transform .2s; border:1px solid var(--border-soft);}
 .modal-overlay.show .modal{transform:none;}
 .modal .m-ic{font-size:34px; margin-bottom:10px;}
-.modal .m-msg{font-size:15px; color:var(--text); margin-bottom:20px; line-height:1.6;}
+.modal .m-msg{font-size:15px; color:var(--text); margin-bottom:20px; line-height:1.6; white-space:pre-line; text-align:start;}
 .modal .m-btns{display:flex; gap:10px;}
 .modal .m-btns .btn{flex:1; padding:12px;}
 
@@ -667,6 +667,39 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
 .lb-owners{background:color-mix(in srgb,var(--brand-2) 55%,transparent); padding:3px 10px; border-radius:9px;}
 .lb-count{font-size:13px; font-weight:700; opacity:.85; flex-shrink:0;}
 @media (max-width:600px){ .lb-nav{width:40px; height:40px; font-size:26px;} .lb-prev{right:8px;} .lb-next{left:8px;} }
+
+/* ---- presence (who's online) ---- */
+.presence-card{padding:12px 14px;}
+.pres-head{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap;}
+.pres-title{font-weight:700; font-size:14px; color:var(--text);}
+.pres-name-sel{margin-inline-start:auto; font-size:12.5px; padding:5px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); color:var(--text);}
+.pres-pills{display:flex; flex-wrap:wrap; gap:6px;}
+.pres-pill{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; padding:5px 11px; border-radius:999px; background:var(--surface-2); border:1px solid var(--border); color:var(--text);}
+.pres-pill.me{border-color:var(--pc,var(--brand)); background:color-mix(in srgb,var(--pc,var(--brand)) 14%,transparent);}
+.pres-dot{width:8px; height:8px; border-radius:50%; background:var(--pc,#3D9B6C); box-shadow:0 0 0 3px color-mix(in srgb,var(--pc,#3D9B6C) 25%,transparent);}
+
+/* ---- weather chip on itinerary ---- */
+.wx-chip{display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-soft); white-space:nowrap;}
+
+/* ---- shabbat times ---- */
+.shabbat-times{margin-top:8px; display:flex; flex-direction:column; gap:5px;}
+.shabbat-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 10px; background:var(--surface-2); border-radius:8px; font-size:13.5px;}
+
+/* ---- document expiry alerts ---- */
+.expiry-alerts{padding:12px 14px; border-inline-start:4px solid var(--accent);}
+.ea-title{font-weight:700; margin-bottom:8px;}
+.ea-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:6px 0; font-size:13px; border-top:1px solid var(--border-soft);}
+.ea-row:first-of-type{border-top:none;}
+.ea-row.err{color:var(--danger);} .ea-row.warn{color:var(--accent-ink);}
+.cat-badge.exp-err{background:color-mix(in srgb,var(--danger) 16%,transparent); color:var(--danger);}
+.cat-badge.exp-warn{background:color-mix(in srgb,var(--accent) 22%,transparent); color:var(--accent-ink);}
+.cat-badge.exp-add{cursor:pointer; border:1px dashed var(--border); background:transparent; color:var(--text-mute);}
+
+/* ---- drag-to-reorder ---- */
+.drag-handle{cursor:grab; touch-action:none; user-select:none; font-size:18px; line-height:1; color:var(--text-mute); padding:2px 6px; align-self:center; flex:0 0 auto;}
+.drag-handle:active{cursor:grabbing;}
+[data-sortid].dragging{position:relative; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:.96;}
+.sort-placeholder{border:2px dashed var(--brand-2); border-radius:14px; background:color-mix(in srgb,var(--brand-2) 8%,transparent); margin-bottom:8px;}
 </style>
 </head>
 <body>
@@ -1241,7 +1274,7 @@ function alertModal(message, icon='ℹ️'){
   });
 }
 function promptModal(message, opts={}){
-  const {okText='שמירה', cancelText='ביטול', icon='✏️', value='', placeholder=''} = opts;
+  const {okText='שמירה', cancelText='ביטול', icon='✏️', value='', placeholder='', type='text'} = opts;
   return new Promise(resolve=>{
     const root = el('modal-root');
     const ov = document.createElement('div');
@@ -1249,7 +1282,7 @@ function promptModal(message, opts={}){
     ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
       <div class="m-ic">${icon}</div>
       <div class="m-msg">${escapeHtml(message)}</div>
-      <input type="text" class="m-input" id="prompt-input" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">
+      <input type="${escapeHtml(type)}" class="m-input" id="prompt-input" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">
       <div class="m-btns">
         <button class="btn btn-ghost" data-act="cancel">${escapeHtml(cancelText)}</button>
         <button class="btn btn-save" data-act="ok">${escapeHtml(okText)}</button>
@@ -1372,8 +1405,13 @@ async function boot(){
   if(!cache.bootDone){
     setInterval(checkFbConnection, 30000);
     setInterval(updateCountdown, 60000);
+    registerSW();
+    startLiveSync();       // presence + background refresh + notifications
     cache.bootDone = true;
   }
+  ensureWeather();         // warm the weather cache for the itinerary
+  ensureShabbatTimes();    // warm Shabbat candle-lighting / havdalah times
+  cleanupOrphanBlobs();    // background: drop unreferenced document/photo blobs
   let startTab = (location.hash||'').replace(/^#/,'');
   if(!RENDERERS[startTab]) startTab = RENDERERS[currentTab] ? currentTab : 'home';
   await switchTab(startTab, {replace:true});
@@ -1460,19 +1498,42 @@ async function exportData(){
   const keys = ['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','pack-categories','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list','map-pins','activity-log','flight-folder','photo-album'];
   const out = {};
   for(const k of keys){ const v = await loadKey(k, null); if(v !== null) out[k] = v; }
+  // Document images (passports, tickets, licenses) live under folder-docs/<id>, not
+  // inside flight-folder. Fetch them directly so a backup actually contains them —
+  // fetched (not loadKey'd) to avoid caching multi-MB blobs into localStorage.
+  try{
+    const res = await fetch(`${FIREBASE_URL}/folder-docs.json`, { headers: await appCheckHeaders() });
+    if(res.ok){ const fd = await res.json(); if(fd) out['folder-docs'] = fd; }
+  }catch(e){ /* offline — export what we have */ }
   const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download='italy-trip-backup.json'; a.click();
   URL.revokeObjectURL(url);
 }
+// Only keys the app actually owns may be restored — a stray/corrupt file can't
+// inject arbitrary nodes into the shared database.
+const IMPORTABLE_KEYS = new Set(['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','pack-categories','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list','map-pins','activity-log','flight-folder','folder-docs','photo-album','photo-blobs']);
 async function importBackupData(file){
   if(!file) return;
+  let data;
+  try{ data = JSON.parse(await file.text()); }
+  catch(e){ alertModal('קובץ לא תקין — ודאו שזה קובץ גיבוי מהאפליקציה','⚠️'); return; }
+  if(!data || typeof data !== 'object' || Array.isArray(data)){ alertModal('קובץ לא תקין — ודאו שזה קובץ גיבוי מהאפליקציה','⚠️'); return; }
+  const keys = Object.keys(data).filter(k=>IMPORTABLE_KEYS.has(k));
+  if(!keys.length){ alertModal('לא נמצאו נתונים מוכרים בקובץ הגיבוי.','⚠️'); return; }
+  // Destructive: importing OVERWRITES the current shared data for every key in the
+  // file, for everyone. Make the user confirm, and spell out exactly what changes.
+  const ok = await confirmModal(
+    `ייבוא הגיבוי ידרוס את הנתונים הנוכחיים בענן עבור כל המשפחות, בקטגוריות הבאות:\n\n${keys.map(k=>'• '+(ACTIVITY_LABELS[k]||k)).join('\n')}\n\nהפעולה אינה הפיכה. להמשיך?`,
+    {okText:'כן, ייבא ודרוס', danger:true, icon:'⬆️'}
+  );
+  if(!ok) return;
   try{
-    const data = JSON.parse(await file.text());
-    for(const [key, value] of Object.entries(data)) await saveKey(key, value);
+    for(const key of keys) await saveKey(key, data[key], true);
+    logActivity('edit','activity-log',`יובא גיבוי (${keys.length} קטגוריות)`);
     await switchTab(currentTab);
     alertModal('הנתונים יובאו בהצלחה ✓','✅');
-  }catch(e2){ alertModal('קובץ לא תקין — ודאו שזה קובץ גיבוי מהאפליקציה','⚠️'); }
+  }catch(e2){ alertModal('הייבוא נכשל — בדקו חיבור ונסו שוב','⚠️'); }
 }
 function triggerImport(){
   const inp = document.createElement('input');
@@ -1499,6 +1560,9 @@ RENDERERS.home = async function(){
       <button class="btn btn-nav" style="flex:1" onclick="openWazeToVilla()">🗺️ Waze לווילה</button>
       <button class="btn btn-ghost" style="flex:1" onclick="navTo(${VILLA_COORDS[0]},${VILLA_COORDS[1]},'Villa')">📍 Google Maps</button>
     </div>
+
+    <div id="presence-bar"></div>
+    <div id="home-expiry"></div>
 
     <div class="section-title">⭐ גישה מהירה</div>
     <div class="quick-grid">
@@ -1529,8 +1593,18 @@ RENDERERS.home = async function(){
       </label>
     </div>
     <p class="muted" style="margin-top:4px">שמרו עותק של כל הנתונים כקובץ, או העלו גיבוי קיים.</p>
+
+    <div class="section-title">🔔 התראות</div>
+    <div class="card">
+      ${notifyEnabled()
+        ? `<div class="row" style="align-items:center;gap:10px"><span style="flex:1">התראות פעילות — תקבלו הודעה על עדכונים חדשים בלוח כשהאפליקציה פתוחה או ברקע.</span><button class="btn btn-ghost" onclick="disableNotifications()">כיבוי</button></div>`
+        : `<div class="row" style="align-items:center;gap:10px"><span style="flex:1">קבלו התראה כשמישהו מוסיף הודעה או תגובה בלוח.</span><button class="btn btn-add" onclick="enableNotifications()">🔔 הפעלת התראות</button></div>`}
+      <p class="muted" style="margin-top:6px">ההתראות עובדות כל עוד לשונית האפליקציה פתוחה או ברקע במכשיר (אתר סטטי — אין שרת לדחיפה כשהאפליקציה סגורה לגמרי).</p>
+    </div>
   `;
   initDropZone(el('import-drop'), el('import-file'), f=>{ if(f) importBackupData(f); });
+  renderPresence();
+  renderExpiryAlerts('home-expiry');
 };
 function famColor(name){ const i = FAMILIES.indexOf(name); return i>=0 ? FAM_COLORS[i%FAM_COLORS.length] : '#888'; }
 function noteCardHtml(n, withDel){
@@ -1591,8 +1665,10 @@ RENDERERS.itinerary = async function(){
     if(migrated){ await saveKey('itinerary-days', migrated, true); logActivity('edit','itinerary-days','המסלול עודכן להתחיל מיום חמישי בבוקר'); days = migrated; }
     else days = fresh;
   }
+  ensureWeather(); // refresh forecast in the background; re-renders when it arrives
   el('main-content').innerHTML = `<div class="section-title">🗓️ המסלול היומי</div>
     <p class="section-sub">כולם יכולים לערוך — השינויים נשמרים אוטומטית. פתחו את "לוגיסטיקה ופרטי פעילות" בכל יום כדי לקבוע אחראי, הוראות הגעה, כרטיסים וציוד.</p>
+    <button class="btn btn-ghost btn-block" style="margin-bottom:10px" onclick="exportItineraryICS()">📅 ייצוא המסלול ליומן (Google Calendar / Apple)</button>
     <div id="days-list"></div>`;
   const list = el('days-list');
   list.innerHTML = days.map(day => {
@@ -1623,6 +1699,7 @@ RENDERERS.itinerary = async function(){
         <span class="dnum">יום ${day.num}</span>
         <input type="text" value="${escapeHtml(day.city)}" placeholder="עיר / אזור..." data-field="city" data-id="${day.id}" aria-label="עיר ליום ${day.num}">
         <span class="muted" style="white-space:nowrap">${HE_DOW[d.getDay()]} · ${day.date}</span>
+        ${weatherChipHtml(d)}
         ${today?'<span class="tag" style="background:var(--green)">היום</span>':''}
         ${shabbat?'<span class="tag" style="background:var(--terra)">שבת ✨</span>':''}
         ${coords?`<button class="btn-icon" title="ניווט" aria-label="ניווט אל ${escapeHtml(day.city)}" onclick="navTo(${coords[0]},${coords[1]},'${q(day.city)}')">🧭</button>`:''}
@@ -1690,27 +1767,32 @@ RENDERERS.places = async function(){
   renderPlacesList(places);
 };
 function renderPlacesList(places){
-  el('places-list').innerHTML = places.length ? places.map(p=>`
-    <div class="card list-card">
-      <div style="min-width:0"><b>${escapeHtml(p.name)}</b>${p.note?`<div class="muted" style="margin-top:3px">${escapeHtml(p.note)}</div>`:''}</div>
+  const wrap = el('places-list');
+  wrap.innerHTML = places.length ? places.map(p=>`
+    <div class="card list-card" data-sortid="${escapeHtml(p.id)}">
+      <span class="drag-handle" aria-label="גרירה לשינוי סדר">⠿</span>
+      <div style="min-width:0;flex:1"><b>${escapeHtml(p.name)}</b>${p.note?`<div class="muted" style="margin-top:3px">${escapeHtml(p.note)}</div>`:''}</div>
       <div class="lc-actions">
         <button class="btn-icon" title="חיפוש במפה" aria-label="חיפוש במפה" onclick="mapSearch('${q(p.name)}')">🗺️</button>
         <button class="btn-icon" title="עריכה" aria-label="עריכה" onclick="editPlace('${p.id}')">✏️</button>
         <button class="btn-del" aria-label="מחיקה" onclick="delPlace('${p.id}')">✕</button>
       </div>
     </div>`).join('') : '<div class="card empty-hint">עדיין אין מקומות — הוסיפו את הראשון!</div>';
+  if(places.length) makeSortable(wrap, order=>saveReorder('places', order, ()=>RENDERERS.places()));
 }
 async function addPlace(){
   const name = el('place-name').value.trim();
   const note = el('place-note').value.trim();
   if(!name) return;
-  const places = await loadKey('places', []);
   const editing = !!cache.editPlaceId;
+  return withKeyLock('places', async ()=>{
+  const places = await loadKey('places', []);
   if(editing){ const p=places.find(x=>x.id===cache.editPlaceId); if(p){p.name=name;p.note=note;} cache.editPlaceId=null; }
   else places.push({id:uid(), name, note});
   await saveKey('places', places);
   logActivity(editing?'edit':'add', 'places', name);
   RENDERERS.places();
+  });
 }
 async function editPlace(id){
   const places = await loadKey('places', []);
@@ -1721,12 +1803,14 @@ async function editPlace(id){
 }
 async function delPlace(id){
   if(!(await confirmModal('למחוק את המקום?'))) return;
+  return withKeyLock('places', async ()=>{
   let places = await loadKey('places', []);
   const removed = places.find(p=>p.id===id);
   places = places.filter(p=>p.id!==id);
   await saveKey('places', places);
   logActivity('del', 'places', removed?removed.name:'');
   RENDERERS.places();
+  });
 }
 function mapSearch(name){ window.open(`https://www.google.com/maps/search/${encodeURIComponent(name+' Italy')}`,'_blank','noopener'); }
 
@@ -1900,7 +1984,7 @@ RENDERERS.kosher = async function(){
     <div class="section-title">🕯️ שבת בטיול</div>
     <div class="info-box">
       הטיול כולל שבת אחת: <b>יום שישי 31.7 – שבת 1.8.2026</b><br>
-      הדלקת נרות ברומא/אומבריה: <b>סביב 20:15–20:20</b> (הערכה לפי מגמת השנה — מומלץ לאמת זמן מדויק קרוב למועד באתר חב"ד או היכל שלמה).
+      ${shabbatTimesHtml()}
     </div>
 
     <div class="section-title">🕍 בתי כנסת</div>
@@ -1940,6 +2024,7 @@ RENDERERS.kosher = async function(){
   `;
   renderSynList(syns);
   renderKosherList(kosherSpots);
+  ensureShabbatTimes();
 };
 function renderSynList(syns){
   el('syn-list').innerHTML = syns.length ? syns.map(s=>`
@@ -1973,13 +2058,15 @@ function renderKosherList(spots){
 async function addSyn(){
   const name = el('syn-name').value.trim(), address = el('syn-addr').value.trim(), phone = el('syn-phone').value.trim();
   if(!name) return;
-  const syns = await loadKey('synagogues', []);
   const editing = !!cache.editSynId;
+  return withKeyLock('synagogues', async ()=>{
+  const syns = await loadKey('synagogues', []);
   if(editing){ const s=syns.find(x=>x.id===cache.editSynId); if(s){s.name=name;s.address=address;s.phone=phone;} cache.editSynId=null; }
   else syns.push({id:uid(), name, address, phone});
   await saveKey('synagogues', syns);
   logActivity(editing?'edit':'add', 'synagogues', name);
   RENDERERS.kosher();
+  });
 }
 async function editSyn(id){
   const syns = await loadKey('synagogues', []); const s = syns.find(x=>x.id===id); if(!s) return;
@@ -1989,19 +2076,23 @@ async function editSyn(id){
 }
 async function delSyn(id){
   if(!(await confirmModal('למחוק את בית הכנסת?'))) return;
+  return withKeyLock('synagogues', async ()=>{
   let syns = await loadKey('synagogues', []); const removed=syns.find(s=>s.id===id); syns = syns.filter(s=>s.id!==id);
   await saveKey('synagogues', syns); logActivity('del','synagogues',removed?removed.name:''); RENDERERS.kosher();
+  });
 }
 async function addKosherSpot(){
   const city = el('ks-city').value.trim() || 'כללי', name = el('ks-name').value.trim(), note = el('ks-note').value.trim();
   if(!name) return;
-  const spots = await loadKey('kosher-spots', []);
   const editing = !!cache.editKsId;
+  return withKeyLock('kosher-spots', async ()=>{
+  const spots = await loadKey('kosher-spots', []);
   if(editing){ const s=spots.find(x=>x.id===cache.editKsId); if(s){s.city=city;s.name=name;s.note=note;} cache.editKsId=null; }
   else spots.push({id:uid(), city, name, note});
   await saveKey('kosher-spots', spots);
   logActivity(editing?'edit':'add', 'kosher-spots', name + (city?` · ${city}`:''));
   RENDERERS.kosher();
+  });
 }
 async function editKosherSpot(id){
   const spots = await loadKey('kosher-spots', []); const s = spots.find(x=>x.id===id); if(!s) return;
@@ -2011,8 +2102,10 @@ async function editKosherSpot(id){
 }
 async function delKosherSpot(id){
   if(!(await confirmModal('למחוק את המקום?'))) return;
+  return withKeyLock('kosher-spots', async ()=>{
   let spots = await loadKey('kosher-spots', []); const removed=spots.find(s=>s.id===id); spots = spots.filter(s=>s.id!==id);
   await saveKey('kosher-spots', spots); logActivity('del','kosher-spots',removed?removed.name:''); RENDERERS.kosher();
+  });
 }
 function searchKosherNear(){
   const addr = el('addr-search').value.trim(); if(!addr) return;
@@ -2186,8 +2279,9 @@ async function addCustomAttraction(){
   const name = el('attr-name').value.trim(); if(!name) return;
   const data = { name, dist:el('attr-dist').value.trim(), duration:el('attr-duration').value.trim(),
     desc:el('attr-desc').value.trim(), ages:el('attr-ages').value.trim(), price:el('attr-price').value.trim() };
-  const list = await loadKey('villa-attractions-custom', []);
   const editing = !!cache.editAttrId;
+  return withKeyLock('villa-attractions-custom', async ()=>{
+  const list = await loadKey('villa-attractions-custom', []);
   if(editing){ const a=list.find(x=>x.id===cache.editAttrId); if(a) Object.assign(a,data); cache.editAttrId=null; }
   else list.push({id:uid(), ...data});
   await saveKey('villa-attractions-custom', list);
@@ -2195,6 +2289,7 @@ async function addCustomAttraction(){
   ATTR_FIELDS.forEach(id => el(id).value = '');
   el('attr-btn').textContent='הוספה לרשימה';
   renderCustomAttractions(list);
+  });
 }
 async function editCustomAttraction(id){
   const list = await loadKey('villa-attractions-custom', []); const a = list.find(x=>x.id===id); if(!a) return;
@@ -2206,10 +2301,12 @@ async function editCustomAttraction(id){
 }
 async function delCustomAttraction(id){
   if(!(await confirmModal('למחוק את האטרקציה?'))) return;
+  return withKeyLock('villa-attractions-custom', async ()=>{
   let list = await loadKey('villa-attractions-custom', []); const removed=list.find(a=>a.id===id); list = list.filter(a => a.id !== id);
   await saveKey('villa-attractions-custom', list);
   logActivity('del','villa-attractions-custom',removed?removed.name:'');
   renderCustomAttractions(list);
+  });
 }
 
 /* ---------- PACKING ---------- */
@@ -2447,13 +2544,13 @@ async function savePackEdit(scope,id){
   else { const fam=cache.currentPerson; const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); const it=list.find(x=>x.id===id); if(it)it.text=val; all[fam]=list; await saveKey('packing-personal',all); logActivity('edit','packing-personal',val,fam); }
   cache.editPack=null; renderPackBody();
 }
-async function toggleSharedDone(id,checked){ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(it)it.done=checked; await saveKey('packing-shared',list); if(it)logActivity('edit','packing-shared',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`); renderPackBody(); }
-async function togglePackingAssignment(id,family,checked){ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(!it)return; if(!it.assignedTo)it.assignedTo=[]; if(checked){ if(!it.assignedTo.includes(family))it.assignedTo.push(family); } else { it.assignedTo=it.assignedTo.filter(f=>f!==family); } await saveKey('packing-shared',list); renderPackBody(); }
-async function delShared(id){ if(!(await confirmModal('למחוק את הפריט?')))return; let list=await loadKey('packing-shared',[]); const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); await saveKey('packing-shared',list); logActivity('del','packing-shared',removed?removed.text:''); renderPackBody(); }
-async function addShared(){ const i=el('shared-new'); const v=i.value.trim(); if(!v)return; const cat=(el('shared-add-cat')||{}).value||'general'; const sub=(el('shared-add-sub')||{}).value||''; const list=await loadKey('packing-shared',[]); list.push({id:uid(),text:v,done:false,assignedTo:[],cat,sub}); await saveKey('packing-shared',list); logActivity('add','packing-shared',v); renderPackBody(); }
-async function togglePersonalDone(fam,id,checked){ const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('packing-personal',all); if(it)logActivity('edit','packing-personal',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPackBody(); }
-async function delPersonalItem(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; const all=await loadKey('packing-personal',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('packing-personal',all); logActivity('del','packing-personal',removed?removed.text:'',fam); renderPackBody(); }
-async function addPersonal(){ const i=el('personal-new'); const v=i.value.trim(); if(!v)return; const cat=(el('personal-add-cat')||{}).value||'general'; const sub=(el('personal-add-sub')||{}).value||''; const fam=cache.currentPerson; const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); list.push({id:uid(),text:v,done:false,cat,sub}); all[fam]=list; await saveKey('packing-personal',all); logActivity('add','packing-personal',v,fam); renderPackBody(); }
+async function toggleSharedDone(id,checked){ return withKeyLock('packing-shared', async ()=>{ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(it)it.done=checked; await saveKey('packing-shared',list); if(it)logActivity('edit','packing-shared',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`); renderPackBody(); }); }
+async function togglePackingAssignment(id,family,checked){ return withKeyLock('packing-shared', async ()=>{ const list=await loadKey('packing-shared',[]); const it=list.find(x=>x.id===id); if(!it)return; if(!it.assignedTo)it.assignedTo=[]; if(checked){ if(!it.assignedTo.includes(family))it.assignedTo.push(family); } else { it.assignedTo=it.assignedTo.filter(f=>f!==family); } await saveKey('packing-shared',list); renderPackBody(); }); }
+async function delShared(id){ if(!(await confirmModal('למחוק את הפריט?')))return; return withKeyLock('packing-shared', async ()=>{ let list=await loadKey('packing-shared',[]); const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); await saveKey('packing-shared',list); logActivity('del','packing-shared',removed?removed.text:''); renderPackBody(); }); }
+async function addShared(){ const i=el('shared-new'); const v=i.value.trim(); if(!v)return; const cat=(el('shared-add-cat')||{}).value||'general'; const sub=(el('shared-add-sub')||{}).value||''; return withKeyLock('packing-shared', async ()=>{ const list=await loadKey('packing-shared',[]); list.push({id:uid(),text:v,done:false,assignedTo:[],cat,sub}); await saveKey('packing-shared',list); logActivity('add','packing-shared',v); renderPackBody(); }); }
+async function togglePersonalDone(fam,id,checked){ return withKeyLock('packing-personal', async ()=>{ const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('packing-personal',all); if(it)logActivity('edit','packing-personal',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPackBody(); }); }
+async function delPersonalItem(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; return withKeyLock('packing-personal', async ()=>{ const all=await loadKey('packing-personal',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('packing-personal',all); logActivity('del','packing-personal',removed?removed.text:'',fam); renderPackBody(); }); }
+async function addPersonal(){ const i=el('personal-new'); const v=i.value.trim(); if(!v)return; const cat=(el('personal-add-cat')||{}).value||'general'; const sub=(el('personal-add-sub')||{}).value||''; const fam=cache.currentPerson; return withKeyLock('packing-personal', async ()=>{ const all=await loadKey('packing-personal',{}); const list=all[fam]||defaultPersonalPacking(); list.push({id:uid(),text:v,done:false,cat,sub}); all[fam]=list; await saveKey('packing-personal',all); logActivity('add','packing-personal',v,fam); renderPackBody(); }); }
 
 /* ---- change an item's category / sub-category (preserving any unsaved edited text) ---- */
 function pendingEditText(){ const i=el('pack-edit-input'); return i ? i.value.trim() : undefined; }
@@ -2474,18 +2571,22 @@ async function setItemSub(scope, id, sub){
 }
 async function updatePackItem(scope, id, fields){
   if(scope==='shared'){
-    const list = await loadKey('packing-shared', []);
-    const it = list.find(x=>x.id===id); if(!it) return;
-    Object.assign(it, fields);
-    await saveKey('packing-shared', list);
+    return withKeyLock('packing-shared', async ()=>{
+      const list = await loadKey('packing-shared', []);
+      const it = list.find(x=>x.id===id); if(!it) return;
+      Object.assign(it, fields);
+      await saveKey('packing-shared', list);
+    });
   } else {
     const fam = cache.currentPerson;
-    const all = await loadKey('packing-personal', {});
-    const list = all[fam] || defaultPersonalPacking();
-    const it = list.find(x=>x.id===id); if(!it) return;
-    Object.assign(it, fields);
-    all[fam] = list;
-    await saveKey('packing-personal', all);
+    return withKeyLock('packing-personal', async ()=>{
+      const all = await loadKey('packing-personal', {});
+      const list = all[fam] || defaultPersonalPacking();
+      const it = list.find(x=>x.id===id); if(!it) return;
+      Object.assign(it, fields);
+      all[fam] = list;
+      await saveKey('packing-personal', all);
+    });
   }
 }
 
@@ -2602,31 +2703,37 @@ function renderTasksList(tasks){
   let filtered = tasks;
   if(cache.taskFilter==='open') filtered = tasks.filter(t=>!t.done);
   if(cache.taskFilter==='done') filtered = tasks.filter(t=>t.done);
+  const canSort = cache.taskFilter==='all';
   const rows = filtered.length ? filtered.map(t=>`
-    <div class="card checkrow ${t.done?'done':''}" style="margin-bottom:8px">
+    <div class="card checkrow ${t.done?'done':''}" style="margin-bottom:8px" data-sortid="${escapeHtml(t.id)}">
+      ${canSort?'<span class="drag-handle" aria-label="גרירה לשינוי סדר">⠿</span>':''}
       <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)">
       <div style="flex:1;min-width:0"><span class="txt">${escapeHtml(t.text)}</span>${t.owner?`<div class="muted" style="margin-top:2px">אחראי/ת: ${escapeHtml(t.owner)}</div>`:''}</div>
       <button class="btn-icon" aria-label="עריכה" onclick="editTask('${t.id}')">✏️</button>
       <button class="btn-del" aria-label="מחיקה" onclick="delTask('${t.id}')">✕</button>
     </div>`).join('') : '<div class="card empty-hint">אין מטלות בקטגוריה זו</div>';
-  el('tasks-list').innerHTML = (tasks.length?progressHtml(done,tasks.length):'') + rows;
+  const wrap = el('tasks-list');
+  wrap.innerHTML = (tasks.length?progressHtml(done,tasks.length):'') + rows;
+  if(canSort && filtered.length) makeSortable(wrap, order=>saveReorder('tasks', order, ()=>RENDERERS.tasks()));
 }
 async function addTask(){
   const text = el('task-text').value.trim(); if(!text) return;
   const owner = el('task-owner').value;
+  return withKeyLock('tasks', async ()=>{
   const tasks = await loadKey('tasks', []);
   const editing = !!cache.editTaskId;
   if(editing){ const t=tasks.find(x=>x.id===cache.editTaskId); if(t){t.text=text;t.owner=owner;} cache.editTaskId=null; }
   else tasks.push({id:uid(), text, owner, done:false});
   await saveKey('tasks', tasks); logActivity(editing?'edit':'add','tasks',text,owner); RENDERERS.tasks();
+  });
 }
 async function editTask(id){
   const tasks = await loadKey('tasks', []); const t=tasks.find(x=>x.id===id); if(!t)return;
   cache.editTaskId=id; el('task-text').value=t.text; el('task-owner').value=t.owner||'';
   el('task-btn').textContent='עדכון ✓'; el('task-text').focus();
 }
-async function toggleTask(id,checked){ const tasks=await loadKey('tasks',[]); const t=tasks.find(x=>x.id===id); if(t)t.done=checked; await saveKey('tasks',tasks); if(t)logActivity('edit','tasks',`${checked?'✓ הושלמה':'✗ בוטלה'}: ${t.text}`); renderTasksList(tasks); }
-async function delTask(id){ if(!(await confirmModal('למחוק את המטלה?')))return; let tasks=await loadKey('tasks',[]); const removed=tasks.find(t=>t.id===id); tasks=tasks.filter(t=>t.id!==id); await saveKey('tasks',tasks); logActivity('del','tasks',removed?removed.text:''); RENDERERS.tasks(); }
+async function toggleTask(id,checked){ return withKeyLock('tasks', async ()=>{ const tasks=await loadKey('tasks',[]); const t=tasks.find(x=>x.id===id); if(t)t.done=checked; await saveKey('tasks',tasks); if(t)logActivity('edit','tasks',`${checked?'✓ הושלמה':'✗ בוטלה'}: ${t.text}`); renderTasksList(tasks); }); }
+async function delTask(id){ if(!(await confirmModal('למחוק את המטלה?')))return; return withKeyLock('tasks', async ()=>{ let tasks=await loadKey('tasks',[]); const removed=tasks.find(t=>t.id===id); tasks=tasks.filter(t=>t.id!==id); await saveKey('tasks',tasks); logActivity('del','tasks',removed?removed.text:''); RENDERERS.tasks(); }); }
 
 /* ---------- PRE-FLIGHT CHECKLIST (per family) ---------- */
 function defaultPreflightItems(){
@@ -2657,12 +2764,12 @@ function renderPFBody(all){
   if(cache.editPF){ const i=el('pf-edit-input'); if(i){ i.focus(); i.select(); } }
 }
 async function selectPF(name){ cache.currentPFFamily=name; cache.editPF=null; const all=await loadKey('preflight',{}); renderPFBody(all); }
-async function togglePF(fam,id,checked){ const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('preflight',all); if(it)logActivity('edit','preflight',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPFBody(all); }
-async function addPF(){ const v=el('pf-new').value.trim(); if(!v)return; const fam=cache.currentPFFamily; const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); list.push({id:uid(),text:v,done:false}); all[fam]=list; await saveKey('preflight',all); logActivity('add','preflight',v,fam); renderPFBody(all); }
-async function delPF(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; const all=await loadKey('preflight',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('preflight',all); logActivity('del','preflight',removed?removed.text:'',fam); renderPFBody(all); }
+async function togglePF(fam,id,checked){ return withKeyLock('preflight', async ()=>{ const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); const it=list.find(x=>x.id===id); if(it)it.done=checked; all[fam]=list; await saveKey('preflight',all); if(it)logActivity('edit','preflight',`${checked?'✓ סומן':'✗ בוטל סימון'}: ${it.text}`,fam); renderPFBody(all); }); }
+async function addPF(){ const v=el('pf-new').value.trim(); if(!v)return; const fam=cache.currentPFFamily; return withKeyLock('preflight', async ()=>{ const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); list.push({id:uid(),text:v,done:false}); all[fam]=list; await saveKey('preflight',all); logActivity('add','preflight',v,fam); renderPFBody(all); }); }
+async function delPF(fam,id){ if(!(await confirmModal('למחוק את הפריט?')))return; return withKeyLock('preflight', async ()=>{ const all=await loadKey('preflight',{}); let list=all[fam]||[]; const removed=list.find(x=>x.id===id); list=list.filter(x=>x.id!==id); all[fam]=list; await saveKey('preflight',all); logActivity('del','preflight',removed?removed.text:'',fam); renderPFBody(all); }); }
 async function editPF(fam,id){ cache.editPF={fam,id}; const all=await loadKey('preflight',{}); renderPFBody(all); }
 async function cancelPFEdit(){ cache.editPF=null; const all=await loadKey('preflight',{}); renderPFBody(all); }
-async function savePFEdit(fam,id){ const inp=el('pf-edit-input'); if(!inp)return; const val=inp.value.trim(); if(!val){cancelPFEdit();return;} const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); const it=list.find(x=>x.id===id); if(it)it.text=val; all[fam]=list; await saveKey('preflight',all); logActivity('edit','preflight',val,fam); cache.editPF=null; renderPFBody(all); }
+async function savePFEdit(fam,id){ const inp=el('pf-edit-input'); if(!inp)return; const val=inp.value.trim(); if(!val){cancelPFEdit();return;} return withKeyLock('preflight', async ()=>{ const all=await loadKey('preflight',{}); const list=all[fam]||defaultPreflightItems(); const it=list.find(x=>x.id===id); if(it)it.text=val; all[fam]=list; await saveKey('preflight',all); logActivity('edit','preflight',val,fam); cache.editPF=null; renderPFBody(all); }); }
 
 /* ---------- CONTACTS ---------- */
 function defaultContacts(){
@@ -2703,11 +2810,13 @@ function renderContactsList(contacts){
 async function addContact(){
   const name=el('c-name').value.trim(), phone=el('c-phone').value.trim(), note=el('c-note').value.trim();
   if(!name) return;
-  const contacts = await loadKey('contacts', []);
   const editing = !!cache.editContactId;
+  return withKeyLock('contacts', async ()=>{
+  const contacts = await loadKey('contacts', []);
   if(editing){ const c=contacts.find(x=>x.id===cache.editContactId); if(c){c.name=name;c.phone=phone;c.note=note;} cache.editContactId=null; }
   else contacts.push({id:uid(), name, phone, note});
   await saveKey('contacts', contacts); logActivity(editing?'edit':'add','contacts',name); RENDERERS.contacts();
+  });
 }
 async function editContact(id){
   const contacts = await loadKey('contacts', []); const c=contacts.find(x=>x.id===id); if(!c)return;
@@ -2716,8 +2825,10 @@ async function editContact(id){
 }
 async function delContact(id){
   if(!(await confirmModal('למחוק את איש הקשר?')))return;
+  return withKeyLock('contacts', async ()=>{
   let contacts = await loadKey('contacts', []); const removed=contacts.find(c=>c.id===id); contacts = contacts.filter(c=>c.id!==id);
   await saveKey('contacts', contacts); logActivity('del','contacts',removed?removed.name:''); RENDERERS.contacts();
+  });
 }
 
 /* ---------- BOARD ---------- */
@@ -2776,12 +2887,14 @@ async function addBoard(){
   const author = el('b-author').value || 'המשפחה';
   const text = el('b-text').value.trim();
   if(!text) return;
+  const editing = !!cache.editBoardId;
+  return withKeyLock('board', async ()=>{
   const board = await loadKey('board', []);
   const time = new Date().toLocaleString('he-IL',{dateStyle:'short',timeStyle:'short'});
-  const editing = !!cache.editBoardId;
   if(editing){ const n=board.find(x=>x.id===cache.editBoardId); if(n){n.author=author;n.text=text;} cache.editBoardId=null; }
   else board.push({id:uid(), author, text, time, ts:Date.now()});
   await saveKey('board', board); logActivity(editing?'edit':'add','board',text,author); RENDERERS.board();
+  });
 }
 async function editBoard(id){
   const board = await loadKey('board', []); const n=board.find(x=>x.id===id); if(!n)return;
@@ -2790,10 +2903,12 @@ async function editBoard(id){
 }
 async function delBoard(id){
   if(!(await confirmModal('למחוק את ההודעה?')))return;
+  return withKeyLock('board', async ()=>{
   let board = await loadKey('board', []); const removed=board.find(n=>n.id===id); board = board.filter(n=>n.id!==id);
   await saveKey('board', board);
   logActivity('del','board',removed?removed.text:'',removed?removed.author:'');
   if(currentTab==='board') RENDERERS.board(); else RENDERERS.home();
+  });
 }
 function toggleCommentForm(noteId){
   const form = el('cf-' + noteId);
@@ -2808,6 +2923,7 @@ async function addComment(noteId){
   const author = authorEl.value, text = textEl.value.trim();
   if(!author){ alertModal('נא לבחור שם', '👤'); return; }
   if(!text) return;
+  return withKeyLock('board', async ()=>{
   const board = await loadKey('board', []);
   const note = board.find(n=>n.id===noteId);
   if(!note) return;
@@ -2816,9 +2932,11 @@ async function addComment(noteId){
   await saveKey('board', board);
   logActivity('add','board',`תגובה: ${text}`,author);
   rerenderBoardSurface();
+  });
 }
 async function delComment(noteId, commentId){
   if(!(await confirmModal('למחוק את התגובה?'))) return;
+  return withKeyLock('board', async ()=>{
   const board = await loadKey('board', []);
   const note = board.find(n=>n.id===noteId);
   let removed=null;
@@ -2826,6 +2944,7 @@ async function delComment(noteId, commentId){
   await saveKey('board', board);
   logActivity('del','board',removed?`תגובה: ${removed.text}`:'תגובה',removed?removed.author:'');
   rerenderBoardSurface();
+  });
 }
 // Re-render whichever surface is showing board notes (Board tab or Home "recent updates").
 function rerenderBoardSurface(){ if(currentTab==='board') RENDERERS.board(); else RENDERERS.home(); }
@@ -3125,35 +3244,43 @@ function saveMealField(dayId, slot, field, value){
 async function addShoppingItem(){
   const text=el('shop-text').value.trim(); if(!text) return;
   const category=el('shop-cat').value, addedBy=el('shop-adder').value;
+  return withKeyLock('shopping-list', async ()=>{
   const shopping=await loadKey('shopping-list',[]);
   shopping.push({id:uid(), text, category, done:false, addedBy});
   await saveKey('shopping-list', shopping);
   logActivity('add','shopping-list',text,addedBy);
   await RENDERERS['meal-rota']();
+  });
 }
 async function toggleShoppingItem(id, checked){
+  return withKeyLock('shopping-list', async ()=>{
   const shopping=await loadKey('shopping-list',[]);
   const item=shopping.find(x=>x.id===id); if(item) item.done=checked;
   await saveKey('shopping-list', shopping);
   if(item) logActivity('edit','shopping-list',`${checked?'✓ נרכש':'✗ בוטל'}: ${item.text}`);
   await RENDERERS['meal-rota']();
+  });
 }
 async function delShoppingItem(id){
+  return withKeyLock('shopping-list', async ()=>{
   let shopping=await loadKey('shopping-list',[]);
   const removed=shopping.find(x=>x.id===id);
   shopping=shopping.filter(x=>x.id!==id);
   await saveKey('shopping-list', shopping);
   logActivity('del','shopping-list',removed?removed.text:'');
   await RENDERERS['meal-rota']();
+  });
 }
 async function clearDoneShopping(){
   if(!(await confirmModal('למחוק את כל הפריטים שנרכשו?'))) return;
+  return withKeyLock('shopping-list', async ()=>{
   let shopping=await loadKey('shopping-list',[]);
   const n=shopping.filter(x=>x.done).length;
   shopping=shopping.filter(x=>!x.done);
   await saveKey('shopping-list', shopping);
   logActivity('del','shopping-list',`ניקוי ${n} פריטים שנרכשו`);
   await RENDERERS['meal-rota']();
+  });
 }
 async function filterShopCat(cat){ cache.mealShopCat=cat; await RENDERERS['meal-rota'](); }
 
@@ -3449,19 +3576,22 @@ async function saveMapPin(){
   let lat=cache.pendingPinLat, lng=cache.pendingPinLng;
   if(lat==null){ const c=lookupCityCoords(name); if(c){lat=c[0];lng=c[1];}else{lat=VILLA_COORDS[0];lng=VILLA_COORDS[1];} }
   const type=el('pin-type').value, note=el('pin-note').value.trim(), addedBy=el('pin-adder').value;
-  const pins=await loadKey('map-pins',[]);
   const editing=!!cache.editingPinId;
+  await withKeyLock('map-pins', async ()=>{
+  const pins=await loadKey('map-pins',[]);
   if(editing){ const p=pins.find(x=>x.id===cache.editingPinId); if(p){p.name=name;p.type=type;p.note=note;p.addedBy=addedBy;p.lat=lat;p.lng=lng;} }
   else pins.push({id:uid(),name,lat,lng,type,note,addedBy});
   await saveKey('map-pins',pins);
   logActivity(editing?'edit':'add','map-pins',name,addedBy);
   if(cache.tempPinMarker){ cache.tempPinMarker.remove(); cache.tempPinMarker=null; }
   refreshUserPins(pins);
+  });
   if(!cache.mapFilters.custom) toggleMapFilter('custom');
   cancelMapPin();
 }
 async function deleteMapPin(id){
   if(!(await confirmModal('למחוק את המיקום?'))) return;
+  return withKeyLock('map-pins', async ()=>{
   let pins=await loadKey('map-pins',[]);
   const removed=pins.find(p=>p.id===id);
   pins=pins.filter(p=>p.id!==id);
@@ -3469,6 +3599,7 @@ async function deleteMapPin(id){
   logActivity('del','map-pins',removed?removed.name:'');
   if(cache.leafletMap) cache.leafletMap.closePopup();
   refreshUserPins(pins);
+  });
 }
 async function editMapPinForm(id){
   const pins=await loadKey('map-pins',[]);
@@ -3556,6 +3687,8 @@ RENDERERS['flight-folder'] = async function(){
     <div class="card">
       <div class="row"><input type="text" id="fd-title" placeholder="כותרת המסמך (למשל: דרכון נעמה)..."></div>
       <div class="row"><select id="fd-cat">${catOpts}</select></div>
+      <label class="lbl" style="margin:4px 0 4px">🗓️ תוקף (לדרכון / ויזה / רישיון — אופציונלי)</label>
+      <div class="row"><input type="date" id="fd-expiry" aria-label="תאריך תפוגה"></div>
       <div class="lbl" style="margin:4px 0 6px">שייכו את המסמך ל:</div>
       <div class="owner-checks" id="fd-owners">${ownerChecks}</div>
       <div class="row" style="margin-top:10px">
@@ -3572,6 +3705,8 @@ RENDERERS['flight-folder'] = async function(){
       <p class="muted" style="margin-top:6px">תמונות נדחסות אוטומטית. ניתן להעלות גם PDF. המסמכים נשמרים מוצפנים-לכאורה רק לפי קוד הכניסה המשפחתי — אל תעלו מסמכים רגישים במיוחד אם אינכם בטוחים מי עוד ניגש לקוד.</p>
     </div>
 
+    <div id="fd-expiry-alerts"></div>
+
     <div class="section-title" style="font-size:14px">📑 מסמכים${folder.docs.length?` · ${folder.docs.length}`:''}</div>
     ${folder.docs.length?`<div class="act-toolbar"><input type="search" class="act-search" id="fd-search" placeholder="🔍 חיפוש מסמך לפי שם, סוג או בעלים..." value="${escapeHtml(cache.folderSearch||'')}" oninput="onFolderSearch(this.value)"></div>`:''}
     <div class="lbl" style="margin:2px 0 4px">לפי בן משפחה:</div>
@@ -3584,6 +3719,7 @@ RENDERERS['flight-folder'] = async function(){
     else { if(t) t.textContent = 'גררו לכאן קובץ או לחצו לבחירה'; if(z) z.classList.remove('has-file'); }
   });
   renderFolderDocs(folder);
+  renderExpiryAlerts('fd-expiry-alerts');
   maybeMigrateFolderBlobs(); // background: slim down the shared key for existing docs
 };
 function folderFilterChips(folder){
@@ -3630,17 +3766,22 @@ async function renderFolderDocs(folder){
     } else {
       thumb = `<div class="doc-thumb doc-thumb-icon" onclick="viewFolderDoc('${q(d.id)}')">${cat.ic}</div>`;
     }
+    const est = docExpiryStatus(d);
+    const expChip = d.expiry
+      ? `<span class="cat-badge ${est?('exp-'+est.level):''}">🗓️ בתוקף עד ${new Date(d.expiry+'T00:00:00').toLocaleDateString('he-IL')}</span>`
+      : (EXPIRY_CATS[d.category] ? `<span class="cat-badge exp-add" onclick="editDocExpiry('${q(d.id)}')">➕ הוספת תוקף</span>` : '');
     return `<div class="card doc-card">
       ${thumb}
       <div class="doc-info">
         <div class="doc-title">${escapeHtml(d.title||'מסמך')}</div>
-        <div class="doc-meta"><span class="cat-badge">${cat.ic} ${escapeHtml(cat.label)}</span></div>
+        <div class="doc-meta"><span class="cat-badge">${cat.ic} ${escapeHtml(cat.label)}</span>${expChip}</div>
         <div class="owner-tags">${ownerTags}</div>
         <div class="time2">${d.uploadedBy?escapeHtml(d.uploadedBy)+' · ':''}${escapeHtml(relTime(d.ts,''))}${d.size?' · '+fmtSize(d.size):''}</div>
       </div>
       <div class="doc-actions">
         <button class="btn-icon" title="צפייה" aria-label="צפייה" onclick="viewFolderDoc('${q(d.id)}')">👁️</button>
         <button class="btn-icon" title="הורדה" aria-label="הורדה" onclick="downloadFolderDoc('${q(d.id)}')">⬇️</button>
+        ${EXPIRY_CATS[d.category]?`<button class="btn-icon" title="עדכון תוקף" aria-label="עדכון תוקף" onclick="editDocExpiry('${q(d.id)}')">🗓️</button>`:''}
         <button class="btn-del" aria-label="מחיקה" onclick="delFolderDoc('${q(d.id)}')">✕</button>
       </div>
     </div>`;
@@ -3665,6 +3806,7 @@ function selectFolderFam(name){ cache.currentFolderFam = name; cache.folderMembe
 async function addFolderMember(){
   const inp = el('fd-member-name'); const name = (inp.value||'').trim(); if(!name) return;
   const fam = cache.currentFolderFam;
+  return withKeyLock('flight-folder', async ()=>{
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
   const member = {id:uid(), name};
@@ -3672,20 +3814,28 @@ async function addFolderMember(){
   await saveKey('flight-folder', all);
   logActivity('add','flight-folder',`בן משפחה: ${name}`,fam,{kind:'folder-member-add', fam, id:member.id});
   RENDERERS['flight-folder']();
+  });
 }
 async function delFolderMember(id){
   const fam = cache.currentFolderFam;
+  // Read once for the confirm prompt (member name + affected-doc count); the actual
+  // removal re-reads inside the lock so a concurrent upload/edit isn't clobbered.
+  const pre = await loadKey('flight-folder', {});
+  const preFolder = ensureFolder(pre, fam);
+  const pm = preFolder.members.find(x=>x.id===id);
+  const docCount = (preFolder.docs||[]).filter(d=>(d.owners||[]).includes(id)).length;
+  const warn = docCount ? ` ${docCount} מסמכים משויכים אליו/ה יישארו בתיקייה ללא שיוך.` : '';
+  if(!(await confirmModal(`להסיר את ${pm?pm.name:'בן המשפחה'} מהרשימה?${warn}`, {okText:'הסרה', icon:'👤'}))) return;
+  return withKeyLock('flight-folder', async ()=>{
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
   const idx = folder.members.findIndex(x=>x.id===id);
   const m = folder.members[idx];
-  const docCount = (folder.docs||[]).filter(d=>(d.owners||[]).includes(id)).length;
-  const warn = docCount ? ` ${docCount} מסמכים משויכים אליו/ה יישארו בתיקייה ללא שיוך.` : '';
-  if(!(await confirmModal(`להסיר את ${m?m.name:'בן המשפחה'} מהרשימה?${warn}`, {okText:'הסרה', icon:'👤'}))) return;
   folder.members = folder.members.filter(x=>x.id!==id);
   await saveKey('flight-folder', all);
   logActivity('del','flight-folder',`בן משפחה: ${m?m.name:''}`,fam, m?{kind:'folder-member-del', fam, member:m, index:idx}:undefined);
   RENDERERS['flight-folder']();
+  });
 }
 // Wire a drop zone to a hidden <input type=file>: drag-and-drop a file in, or
 // click to browse. `onFile` fires with the chosen File (or null when cleared).
@@ -3745,6 +3895,7 @@ async function uploadFolderDoc(){
   const titleEl = el('fd-title'), fileEl = el('fd-file'), btn = el('fd-upload-btn');
   const title = (titleEl.value||'').trim();
   const category = el('fd-cat').value;
+  const expiry = (el('fd-expiry') && el('fd-expiry').value) || '';
   const owners = Array.from(document.querySelectorAll('#fd-owners input[type=checkbox]')).filter(c=>c.checked).map(c=>c.value);
   const file = fileEl.files && fileEl.files[0];
   if(!file){ alertModal('בחרו קובץ להעלאה', '📎'); return; }
@@ -3765,16 +3916,24 @@ async function uploadFolderDoc(){
       return;
     }
     cache._docBlobs = cache._docBlobs || {}; cache._docBlobs[id] = out.dataUrl; // warm cache so the thumb shows instantly
-    // 2) Add the small metadata record (no dataUrl) to the shared folder key.
-    const all = await loadKey('flight-folder', {});
-    const folder = ensureFolder(all, fam);
-    const doc = { id, title, category, owners, fileName:out.fileName, mime:out.mime, size:out.size, uploadedBy:fam, ts:Date.now() };
-    folder.docs.push(doc);
-    const ok = await saveKey('flight-folder', all, true);
+    // 2) Add the small metadata record (no dataUrl) to the shared folder key —
+    //    serialized so a concurrent upload/edit by another device can't clobber
+    //    the doc list (the read-modify-write must not overlap another one).
+    let doc;
+    const ok = await withKeyLock('flight-folder', async ()=>{
+      const all = await loadKey('flight-folder', {});
+      const folder = ensureFolder(all, fam);
+      doc = { id, title, category, owners, expiry, fileName:out.fileName, mime:out.mime, size:out.size, uploadedBy:fam, ts:Date.now() };
+      folder.docs.push(doc);
+      const saved = await saveKey('flight-folder', all, true);
+      if(!saved){
+        folder.docs.pop();              // roll back the in-memory doc...
+        _lsSet('flight-folder', all);   // ...and the local cache, so it won't linger then disappear on sync
+      }
+      return saved;
+    });
     if(!ok){
-      folder.docs.pop();              // roll back the in-memory doc...
-      _lsSet('flight-folder', all);   // ...and the local cache, so it won't linger then disappear on sync
-      deleteDocBlob(id);              // ...and drop the just-saved blob so it doesn't orphan
+      deleteDocBlob(id);              // drop the just-saved blob so it doesn't orphan
       btn.disabled = false; btn.textContent = '⬆️ העלאה לתיקייה';
       alertModal('המסמך לא נשמר בענן — ייתכן שיש בעיית חיבור. נסו שוב בעוד רגע.', '⚠️');
       return;
@@ -3994,9 +4153,24 @@ async function downloadFolderDoc(id){
   if(!data){ alertModal('הקובץ אינו זמין כרגע — בדקו חיבור ונסו שוב.', '⚠️'); return; }
   const a = document.createElement('a'); a.href = data; a.download = d.fileName || (d.title+'') || 'document'; a.click();
 }
+async function editDocExpiry(id){
+  const fam = cache.currentFolderFam;
+  const cur = getFolderDoc(fam, await loadKey('flight-folder', {}), id);
+  const val = await promptModal('תאריך תפוגת המסמך:', {type:'date', value:(cur&&cur.expiry)||'', okText:'שמירה', icon:'🗓️'});
+  if(val===null) return;
+  await withKeyLock('flight-folder', async ()=>{
+    const all = await loadKey('flight-folder', {});
+    const d = getFolderDoc(fam, all, id); if(!d) return;
+    d.expiry = val || '';
+    await saveKey('flight-folder', all, true);
+  });
+  logActivity('edit','flight-folder',`תוקף עודכן: ${cur?cur.title:''}`,fam);
+  RENDERERS['flight-folder']();
+}
 async function delFolderDoc(id){
   if(!(await confirmModal('למחוק את המסמך?', {okText:'מחיקה', icon:'🗑️'}))) return;
   const fam = cache.currentFolderFam;
+  return withKeyLock('flight-folder', async ()=>{
   const all = await loadKey('flight-folder', {});
   const folder = ensureFolder(all, fam);
   const idx = folder.docs.findIndex(d=>d.id===id);
@@ -4008,6 +4182,7 @@ async function delFolderDoc(id){
   // the bug it avoids, and it lives in its own key so it never bloats this one.
   logActivity('del','flight-folder',removed?`${docCat(removed.category).label}: ${removed.title}`:'',fam, removed?{kind:'folder-doc-del', fam, doc:removed, index:idx}:undefined);
   RENDERERS['flight-folder']();
+  });
 }
 function dataUrlToBlob(dataUrl){
   const parts = dataUrl.split(',');
@@ -4121,13 +4296,17 @@ RENDERERS.photos = async function(){
        </a>`
     : `<div class="card empty-hint">עדיין לא הוגדר קישור לאלבום. הדביקו למטה קישור לאלבום משותף ב-Google Photos.</div>`;
 
+  const hlImg = (h, eager)=> h.url
+    ? `<img src="${escapeHtml(h.url)}" alt="${escapeHtml(h.caption||'תמונה')}" loading="${eager?'eager':'lazy'}">`
+    : `<img class="hl-lazy" data-hl-id="${escapeHtml(h.id)}" alt="${escapeHtml(h.caption||'תמונה')}">`;
+
   const carousel = highlights.length
     ? `<div class="album-carousel" id="album-carousel">
          <div class="album-carousel-track">${highlights.map((h,i)=>`
-           <a class="album-slide ${i===0?'active':''}" href="${escapeHtml(validLink?link:h.url)}" target="_blank" rel="noopener">
-             <img src="${escapeHtml(h.url)}" alt="${escapeHtml(h.caption||'תמונה מהאלבום')}" loading="${i===0?'eager':'lazy'}">
+           <div class="album-slide ${i===0?'active':''}" onclick="viewHighlight('${q(h.id)}')">
+             ${hlImg(h, i===0)}
              ${h.caption?`<span class="album-slide-cap">${escapeHtml(h.caption)}</span>`:''}
-           </a>`).join('')}</div>
+           </div>`).join('')}</div>
          <span class="album-carousel-badge">📸 ${highlights.length} תמונות מהאלבום</span>
          ${highlights.length>1?`
            <button class="album-carousel-nav prev" data-car-nav="prev" aria-label="הקודם">‹</button>
@@ -4138,12 +4317,12 @@ RENDERERS.photos = async function(){
 
   const grid = highlights.length
     ? `<div class="album-grid">${highlights.map(h=>`
-        <a class="album-tile" href="${escapeHtml(validLink?link:h.url)}" target="_blank" rel="noopener" title="${escapeHtml(h.caption||'')}">
-          <img src="${escapeHtml(h.url)}" alt="${escapeHtml(h.caption||'תמונה')}" loading="lazy">
+        <div class="album-tile" title="${escapeHtml(h.caption||'')}" onclick="viewHighlight('${q(h.id)}')">
+          ${hlImg(h)}
           ${h.caption?`<span class="album-cap">${escapeHtml(h.caption)}</span>`:''}
           <button class="album-tile-x" aria-label="הסרה" onclick="event.preventDefault();event.stopPropagation();delHighlight('${q(h.id)}')">✕</button>
-        </a>`).join('')}</div>`
-    : '<div class="card empty-hint">אפשר להדביק כתובות תמונה (URL) כדי להציג כאן תצוגה מקדימה יפה של האלבום.</div>';
+        </div>`).join('')}</div>`
+    : '<div class="card empty-hint">העלו תמונות מהמכשיר, או הדביקו כתובות תמונה (URL) כדי להציג כאן תצוגה מקדימה יפה.</div>';
 
   el('main-content').innerHTML = `
     ${carousel}
@@ -4167,14 +4346,35 @@ RENDERERS.photos = async function(){
       <button class="btn btn-add btn-block" onclick="saveAlbumLink()">שמירת קישור</button>
     </div>
 
-    <div class="section-title" style="font-size:14px">✨ תצוגה מקדימה (אופציונלי)</div>
+    <div class="section-title" style="font-size:14px">📤 העלאת תמונות מהמכשיר</div>
+    <div class="card">
+      <label class="drop-zone" id="album-drop">
+        <input type="file" id="album-file" accept="image/*" multiple hidden>
+        <span class="drop-zone-inner">
+          <span class="drop-ic">🖼️</span>
+          <span class="drop-text">גררו לכאן תמונות או לחצו לבחירה</span>
+          <span class="drop-hint">ניתן לבחור כמה תמונות · נדחסות אוטומטית</span>
+        </span>
+      </label>
+      <button class="btn btn-add btn-block" id="album-upload-btn" style="margin-top:10px" onclick="el('album-file').click()">⬆️ העלאת תמונות מהמכשיר</button>
+      <p class="muted" style="margin-top:6px">התמונות נשמרות ישירות באתר ומשותפות לכולם, בנוסף לאלבום ב-Google Photos.</p>
+    </div>
+
+    <div class="section-title" style="font-size:14px">✨ הוספה מכתובת (URL)</div>
     <div class="card">
       <div class="row"><input type="text" id="hl-url" placeholder="כתובת תמונה (URL ישיר לתמונה)..."></div>
       <div class="row"><input type="text" id="hl-cap" placeholder="כיתוב (אופציונלי)..."><button class="btn btn-add" onclick="addHighlight()">+ הוספה</button></div>
-      <p class="muted" style="margin-top:6px">להוספת תמונה לתצוגה: פתחו תמונה ב-Google Photos → שיתוף → העתקת קישור, או השתמשו בכל כתובת תמונה ישירה.</p>
+      <p class="muted" style="margin-top:6px">אפשר גם להדביק כתובת תמונה ישירה מכל מקור.</p>
     </div>
     ${grid}`;
   initAlbumCarousel();
+  // fill blob-backed images (uploaded to photo-blobs) lazily
+  document.querySelectorAll('.hl-lazy').forEach(imgEl=>{
+    resolveHighlightSrc({ blob:true, id: imgEl.getAttribute('data-hl-id') }).then(src=>{ if(src) imgEl.src = src; });
+  });
+  const af = el('album-file');
+  if(af) af.addEventListener('change', ()=>{ if(af.files && af.files.length) uploadAlbumPhotos(af.files); });
+  initDropZone(el('album-drop'), el('album-file'), null); // change handler above does the upload
 };
 let albumCarouselTimer = null;
 function initAlbumCarousel(){
@@ -4216,19 +4416,530 @@ async function addHighlight(){
   const url = (el('hl-url').value||'').trim();
   const caption = (el('hl-cap').value||'').trim();
   if(!url){ alertModal('הדביקו כתובת תמונה', '🖼️'); return; }
-  const album = await loadKey('photo-album', { link:'', highlights:[] });
-  if(!album.highlights) album.highlights = [];
-  album.highlights.push({ id:uid(), url, caption });
-  await saveKey('photo-album', album);
+  await withKeyLock('photo-album', async ()=>{
+    const album = await loadKey('photo-album', { link:'', highlights:[] });
+    if(!album.highlights) album.highlights = [];
+    album.highlights.push({ id:uid(), url, caption });
+    await saveKey('photo-album', album);
+  });
   logActivity('add','photo-album',caption||'תמונה לתצוגה');
   RENDERERS.photos();
 }
+// Open the shared full-screen lightbox over all highlights, starting at `id`.
+async function viewHighlight(id){
+  const album = await loadKey('photo-album', { link:'', highlights:[] }, {swr:true});
+  const highlights = album.highlights || [];
+  if(!highlights.length) return;
+  const items = highlights.map(h=>({
+    id:h.id, title:h.caption||'תמונה', mime:'image/jpeg',
+    dataUrl: h.url || undefined, load: h.url ? undefined : (()=>resolveHighlightSrc(h)),
+    catLabel:'', owners:h.by||''
+  }));
+  const start = Math.max(0, highlights.findIndex(h=>h.id===id));
+  openDocLightbox(items, start);
+}
 async function delHighlight(id){
-  const album = await loadKey('photo-album', { link:'', highlights:[] });
-  album.highlights = (album.highlights||[]).filter(h=>h.id!==id);
-  await saveKey('photo-album', album);
+  let removedBlob = null;
+  await withKeyLock('photo-album', async ()=>{
+    const album = await loadKey('photo-album', { link:'', highlights:[] });
+    const removed = (album.highlights||[]).find(h=>h.id===id);
+    if(removed && removed.blob) removedBlob = removed.id;
+    album.highlights = (album.highlights||[]).filter(h=>h.id!==id);
+    await saveKey('photo-album', album);
+  });
+  if(removedBlob) deletePhotoBlob(removedBlob); // drop the stored image blob too
   logActivity('del','photo-album','תמונה מהתצוגה');
   RENDERERS.photos();
+}
+
+/* ============================================================
+   LIVE FEATURES — presence, live sync, notifications, weather,
+   Shabbat times, calendar export, drag-reorder, passport alerts,
+   direct photo upload, orphan-blob cleanup
+============================================================ */
+
+/* ---- small date helpers ---- */
+function ymd(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+
+/* ---- which keys back each tab (for live background refresh) ---- */
+const TAB_KEYS = {
+  home:['board','presence'], itinerary:['itinerary-days'], places:['places'],
+  'villa-attractions':['villa-attractions-custom'], map:['map-pins'],
+  kosher:['kosher-spots','synagogues'], 'meal-rota':['meal-rota','shopping-list'],
+  packing:['packing-shared','packing-personal','pack-categories'], tasks:['tasks'],
+  preflight:['preflight'], contacts:['contacts'], board:['board'],
+  activity:['activity-log'], 'flight-folder':['flight-folder'], photos:['photo-album']
+};
+
+/* ============================================================
+   PRESENCE — "who's online now"
+============================================================ */
+function deviceId(){
+  let id = localStorage.getItem('trip-device');
+  if(!id){ id = uid()+uid(); try{ localStorage.setItem('trip-device', id); }catch(e){} }
+  return id;
+}
+function myName(){ return localStorage.getItem('trip-me') || ''; }
+async function setMyName(name){
+  try{ localStorage.setItem('trip-me', name||''); }catch(e){}
+  await presenceHeartbeat();
+  renderPresence();
+  if(currentTab==='board') RENDERERS.board();
+}
+async function presenceHeartbeat(){
+  try{
+    const id = deviceId();
+    await fetch(`${FIREBASE_URL}/presence/${encodeURIComponent(id)}.json`, {
+      method:'PUT', headers:{'Content-Type':'application/json', ...(await appCheckHeaders())},
+      body: JSON.stringify({ name: myName()||'אורח', tab: currentTab, ts: Date.now() })
+    });
+  }catch(e){ /* offline — presence is best-effort */ }
+}
+async function getPresence(){
+  try{
+    const res = await fetch(`${FIREBASE_URL}/presence.json`, { headers: await appCheckHeaders() });
+    if(!res.ok) throw 0;
+    const all = await res.json() || {};
+    const now = Date.now(), me = deviceId();
+    const online = [];
+    const stale = [];
+    for(const [id, p] of Object.entries(all)){
+      if(!p || !p.ts){ stale.push(id); continue; }
+      if(now - p.ts > 45000){ if(now - p.ts > 600000) stale.push(id); continue; } // prune only long-dead
+      online.push({ id, name:p.name||'אורח', me:id===me });
+    }
+    // prune very stale entries (best-effort, fire-and-forget)
+    stale.forEach(id=>{ try{ fetch(`${FIREBASE_URL}/presence/${encodeURIComponent(id)}.json`, {method:'DELETE'}); }catch(e){} });
+    return online;
+  }catch(e){ return null; }
+}
+async function renderPresence(){
+  const bar = el('presence-bar'); if(!bar) return;
+  const online = await getPresence();
+  if(online === null){ bar.innerHTML=''; return; }
+  const others = online.filter(o=>!o.me);
+  const pills = online.map(o=>`<span class="pres-pill${o.me?' me':''}" style="--pc:${famColor(o.name)}"><span class="pres-dot"></span>${escapeHtml(o.name)}${o.me?' (אני)':''}</span>`).join('');
+  const nameSel = `<select class="pres-name-sel" onchange="setMyName(this.value)" aria-label="מי אתם">
+      <option value=""${!myName()?' selected':''}>— מי אתם? —</option>
+      ${FAMILIES.map(f=>`<option value="${escapeHtml(f)}"${myName()===f?' selected':''}>${escapeHtml(f)}</option>`).join('')}
+    </select>`;
+  bar.innerHTML = `<div class="card presence-card">
+      <div class="pres-head"><span class="pres-title">🟢 מחוברים כעת · ${online.length}</span>${nameSel}</div>
+      <div class="pres-pills">${pills || '<span class="muted">אף אחד לא מחובר כרגע</span>'}</div>
+    </div>`;
+}
+
+/* ============================================================
+   LIVE SYNC LOOP — background refresh + presence + notifications
+============================================================ */
+let _liveTimer = null;
+function startLiveSync(){
+  if(_liveTimer) return;
+  const tick = async ()=>{
+    if(el('app').style.display==='none') return;
+    try{
+      presenceHeartbeat();
+      if(currentTab==='home') renderPresence();
+      (TAB_KEYS[currentTab]||[]).forEach(k=>{ if(k!=='presence') _revalidate(k); });
+      if(notifyEnabled()) checkBoardNotifications();
+    }catch(e){}
+  };
+  _liveTimer = setInterval(tick, 12000);
+  tick();
+  // stop heartbeat cleanly when the tab/app closes
+  window.addEventListener('beforeunload', ()=>{ try{ navigator.sendBeacon && navigator.sendBeacon(`${FIREBASE_URL}/presence/${encodeURIComponent(deviceId())}.json`); }catch(e){} });
+  // fire an immediate refresh when the app regains focus (returning to the tab)
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) tick(); });
+}
+
+/* ============================================================
+   NOTIFICATIONS — local notifications on new board activity
+   (works while the app tab is open or backgrounded; true closed-app
+    push needs a server, which this static app doesn't have)
+============================================================ */
+function notifyEnabled(){ return localStorage.getItem('trip-notify')==='1' && 'Notification' in window && Notification.permission==='granted'; }
+function _boardSignatureIds(board){
+  const ids=[];
+  (board||[]).forEach(n=>{ ids.push('p:'+n.id); (n.comments||[]).forEach(c=>ids.push('c:'+n.id+':'+c.id)); });
+  return ids;
+}
+async function enableNotifications(){
+  if(!('Notification' in window)){ alertModal('הדפדפן הזה לא תומך בהתראות.','🔕'); return; }
+  let perm = Notification.permission;
+  if(perm!=='granted') perm = await Notification.requestPermission();
+  if(perm!=='granted'){ alertModal('ההתראות חסומות. ניתן לאפשר אותן בהגדרות הדפדפן עבור אתר זה.','🔕'); return; }
+  try{ localStorage.setItem('trip-notify','1'); }catch(e){}
+  // seed "seen" with everything current so we don't fire for the backlog
+  const board = _lsGet('board') || await loadKey('board', []);
+  try{ localStorage.setItem('trip-seen-board', JSON.stringify(_boardSignatureIds(board))); }catch(e){}
+  showToast('התראות הופעלו 🔔');
+  if(currentTab==='home') RENDERERS.home();
+  if(currentTab==='board') RENDERERS.board();
+}
+function disableNotifications(){ try{ localStorage.setItem('trip-notify','0'); }catch(e){} showToast('התראות כובו'); if(currentTab==='home') RENDERERS.home(); if(currentTab==='board') RENDERERS.board(); }
+async function checkBoardNotifications(){
+  try{
+    const board = await loadKey('board', []);
+    const cur = _boardSignatureIds(board);
+    let seen; try{ seen = JSON.parse(localStorage.getItem('trip-seen-board')||'[]'); }catch(e){ seen=[]; }
+    const seenSet = new Set(seen);
+    const fresh = cur.filter(id=>!seenSet.has(id));
+    if(fresh.length && seen.length){ // don't notify on the very first population
+      const me = myName();
+      let posts=0, comments=0, sample='';
+      for(const id of fresh){
+        if(id.startsWith('p:')){ const n=board.find(x=>'p:'+x.id===id); if(n && n.author!==me){ posts++; sample=sample||n.text; } }
+        else { const [,nid,cid]=id.split(':'); const n=board.find(x=>x.id===nid); const c=n&&(n.comments||[]).find(x=>x.id===cid); if(c && c.author!==me){ comments++; sample=sample||('תגובה: '+c.text); } }
+      }
+      const total = posts+comments;
+      if(total>0){
+        const title = total===1 ? 'עדכון חדש בלוח 📋' : `${total} עדכונים חדשים בלוח 📋`;
+        const body = (sample||'').slice(0,120);
+        showNotification(title, body, 'board');
+      }
+    }
+    try{ localStorage.setItem('trip-seen-board', JSON.stringify(cur.slice(-400))); }catch(e){}
+  }catch(e){}
+}
+async function showNotification(title, body, tab){
+  if(!notifyEnabled()) return;
+  try{
+    const reg = await (navigator.serviceWorker && navigator.serviceWorker.ready);
+    if(reg && reg.showNotification){ reg.showNotification(title, { body, tag:'trip-'+tab, data:{tab}, icon:'icon-192.png', badge:'icon-192.png' }); }
+    else { new Notification(title, { body, tag:'trip-'+tab, icon:'icon-192.png' }); }
+  }catch(e){ try{ new Notification(title, { body }); }catch(_){} }
+}
+
+/* ============================================================
+   WEATHER — daily forecast per itinerary day (Open-Meteo, no key)
+============================================================ */
+const WEATHER_TTL = 3*3600*1000; // 3h
+function weatherLook(code){
+  const c = +code;
+  if(c===0) return {ic:'☀️', he:'בהיר'};
+  if(c>=1&&c<=2) return {ic:'🌤️', he:'מעונן חלקית'};
+  if(c===3) return {ic:'☁️', he:'מעונן'};
+  if(c===45||c===48) return {ic:'🌫️', he:'ערפל'};
+  if(c>=51&&c<=57) return {ic:'🌦️', he:'טפטוף'};
+  if(c>=61&&c<=67) return {ic:'🌧️', he:'גשם'};
+  if(c>=71&&c<=77) return {ic:'❄️', he:'שלג'};
+  if(c>=80&&c<=82) return {ic:'🌧️', he:'ממטרים'};
+  if(c>=85&&c<=86) return {ic:'🌨️', he:'ממטרי שלג'};
+  if(c>=95) return {ic:'⛈️', he:'סופת רעמים'};
+  return {ic:'🌡️', he:''};
+}
+function getWeatherFor(dateStr){
+  try{ const w = JSON.parse(localStorage.getItem('trip-weather')||'null'); return w && w.data ? w.data[dateStr] : null; }catch(e){ return null; }
+}
+async function ensureWeather(force){
+  try{
+    const cached = JSON.parse(localStorage.getItem('trip-weather')||'null');
+    if(!force && cached && (Date.now()-cached.ts < WEATHER_TTL)) return cached.data;
+    const start = ymd(ROTA_START), end = ymd(TRIP_END);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${VILLA_COORDS[0]}&longitude=${VILLA_COORDS[1]}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FRome&start_date=${start}&end_date=${end}`;
+    const res = await fetch(url);
+    if(!res.ok) throw 0;
+    const j = await res.json();
+    const data = {};
+    const t = j.daily && j.daily.time || [];
+    t.forEach((day,i)=>{ data[day] = { code:j.daily.weathercode[i], tmax:Math.round(j.daily.temperature_2m_max[i]), tmin:Math.round(j.daily.temperature_2m_min[i]), pp:j.daily.precipitation_probability_max?j.daily.precipitation_probability_max[i]:null }; });
+    try{ localStorage.setItem('trip-weather', JSON.stringify({ts:Date.now(), data})); }catch(e){}
+    if(currentTab==='itinerary') RENDERERS.itinerary();
+    return data;
+  }catch(e){ return getWeatherFor(ymd(ROTA_START)) ? JSON.parse(localStorage.getItem('trip-weather')).data : null; }
+}
+function weatherChipHtml(dateObj){
+  const w = getWeatherFor(ymd(dateObj));
+  if(!w) return '';
+  const l = weatherLook(w.code);
+  const rain = (w.pp!=null && w.pp>=30) ? ` · 🌧️${w.pp}%` : '';
+  return `<span class="wx-chip" title="${l.he}">${l.ic} ${w.tmax}°/${w.tmin}°${rain}</span>`;
+}
+
+/* ============================================================
+   SHABBAT TIMES — candle-lighting & havdalah at the villa (Hebcal, no key)
+============================================================ */
+async function ensureShabbatTimes(force){
+  try{
+    const cached = JSON.parse(localStorage.getItem('trip-shabbat')||'null');
+    if(!force && cached && (Date.now()-cached.ts < 24*3600*1000)) return cached.items;
+    const start = ymd(new Date(TRIP_START.getFullYear(), TRIP_START.getMonth(), TRIP_START.getDate()-2));
+    const end = ymd(new Date(TRIP_END.getFullYear(), TRIP_END.getMonth(), TRIP_END.getDate()+2));
+    const url = `https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=off&mod=off&nx=off&c=on&geo=pos&latitude=${VILLA_COORDS[0]}&longitude=${VILLA_COORDS[1]}&tzid=Europe/Rome&m=50&s=off&start=${start}&end=${end}`;
+    const res = await fetch(url);
+    if(!res.ok) throw 0;
+    const j = await res.json();
+    const items = (j.items||[]).filter(it=>it.category==='candles' || it.category==='havdalah').map(it=>({
+      category:it.category, date:it.date, title:it.title,
+      time:(it.date||'').slice(11,16)
+    }));
+    try{ localStorage.setItem('trip-shabbat', JSON.stringify({ts:Date.now(), items})); }catch(e){}
+    if(currentTab==='kosher') RENDERERS.kosher();
+    return items;
+  }catch(e){ try{ return JSON.parse(localStorage.getItem('trip-shabbat')).items; }catch(_){ return null; } }
+}
+function getShabbatItems(){ try{ return JSON.parse(localStorage.getItem('trip-shabbat')||'null').items; }catch(e){ return null; } }
+function shabbatTimesHtml(){
+  const items = getShabbatItems();
+  if(!items || !items.length) return `הדלקת נרות ברומא/אומבריה: <b>סביב 20:15–20:20</b> (טוען זמנים מדויקים…).`;
+  const rows = items.map(it=>{
+    const d = new Date(it.date);
+    const dstr = d.toLocaleDateString('he-IL',{weekday:'long', day:'2-digit', month:'2-digit'});
+    const ic = it.category==='candles' ? '🕯️' : '✨';
+    const label = it.category==='candles' ? 'הדלקת נרות' : 'צאת שבת (הבדלה)';
+    return `<div class="shabbat-row"><span>${ic} ${label} · ${dstr}</span><b>${it.time}</b></div>`;
+  }).join('');
+  return `<div class="shabbat-times">${rows}</div><div class="muted" style="margin-top:6px">זמנים מחושבים אוטומטית למיקום הווילה (Hebcal). מומלץ לאמת מול לוח מקומי.</div>`;
+}
+
+/* ============================================================
+   ITINERARY → CALENDAR (.ics export)
+============================================================ */
+function icsEscape(s){ return (s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+async function exportItineraryICS(){
+  const days = await loadKey('itinerary-days', []);
+  const pad = n=>String(n).padStart(2,'0');
+  const dstamp = (d)=>`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  const now = new Date();
+  const stamp = `${dstamp(now)}T${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  let lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Engel Italy Trip//HE','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:טיול אנגל באיטליה'];
+  days.forEach(day=>{
+    const d = dayDate(day.num);
+    const next = new Date(d); next.setDate(next.getDate()+1);
+    const parts = [];
+    if(day.morning) parts.push('🌅 בוקר: '+day.morning);
+    if(day.noon) parts.push('🌤 צהריים: '+day.noon);
+    if(day.evening) parts.push('🌙 ערב: '+day.evening);
+    if(day.owner) parts.push('👤 אחראי: '+day.owner);
+    if(day.directions) parts.push('🚗 הגעה: '+day.directions);
+    const summary = `יום ${day.num}${day.city?' · '+day.city:''}`;
+    lines.push('BEGIN:VEVENT',
+      `UID:day-${day.id}@engel-italy`,
+      `DTSTAMP:${stamp}Z`,
+      `DTSTART;VALUE=DATE:${dstamp(d)}`,
+      `DTEND;VALUE=DATE:${dstamp(next)}`,
+      `SUMMARY:${icsEscape(summary)}`,
+      `DESCRIPTION:${icsEscape(parts.join('\n'))}`,
+      day.city?`LOCATION:${icsEscape(day.city+', Italy')}`:'',
+      'END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  const ics = lines.filter(Boolean).join('\r\n');
+  const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='italy-itinerary.ics'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('היומן יוצא ✓');
+}
+
+/* ============================================================
+   PASSPORT / DOCUMENT EXPIRY ALERTS
+   Passports should stay valid ≥6 months past the return date.
+============================================================ */
+const PASSPORT_MIN_VALID = new Date(TRIP_END.getFullYear(), TRIP_END.getMonth()+6, TRIP_END.getDate());
+const EXPIRY_CATS = { passport:'הדרכון', visa:'הוויזה', license:'הרישיון' };
+function docExpiryStatus(doc){
+  if(!doc || !doc.expiry) return null;
+  const exp = new Date(doc.expiry+'T00:00:00');
+  if(isNaN(exp)) return null;
+  const label = EXPIRY_CATS[doc.category];
+  if(doc.category==='passport'){
+    if(exp < PASSPORT_MIN_VALID) return {level:'err', msg:`⚠️ ${doc.title}: הדרכון פג/אינו בתוקף ל-6 חודשים אחרי הטיול (בתוקף עד ${exp.toLocaleDateString('he-IL')})`};
+  }
+  if(exp < TRIP_END) return {level:'err', msg:`⚠️ ${doc.title}: ${label||'המסמך'} פג לפני סוף הטיול (${exp.toLocaleDateString('he-IL')})`};
+  const soon = new Date(TRIP_END); soon.setMonth(soon.getMonth()+8);
+  if(doc.category==='passport' && exp < soon) return {level:'warn', msg:`🔔 ${doc.title}: הדרכון בתוקף עד ${exp.toLocaleDateString('he-IL')} — בדקו דרישת 6 חודשים`};
+  return null;
+}
+async function collectExpiryAlerts(){
+  const all = await loadKey('flight-folder', {}, {swr:true});
+  const alerts = [];
+  Object.entries(all||{}).forEach(([fam,f])=>{
+    (f&&f.docs||[]).forEach(d=>{
+      if(!EXPIRY_CATS[d.category]) return;
+      const st = docExpiryStatus(d);
+      if(st) alerts.push({fam, ...st});
+    });
+  });
+  return alerts;
+}
+async function renderExpiryAlerts(containerId){
+  const box = el(containerId); if(!box) return;
+  const alerts = await collectExpiryAlerts();
+  if(!alerts.length){ box.innerHTML=''; return; }
+  box.innerHTML = `<div class="card expiry-alerts">
+    <div class="ea-title">🛂 בדיקת תוקף מסמכים</div>
+    ${alerts.map(a=>`<div class="ea-row ${a.level}"><span>${escapeHtml(a.msg)}</span><span class="muted">${escapeHtml(shortFam(a.fam))}</span></div>`).join('')}
+  </div>`;
+}
+
+/* ============================================================
+   DRAG-TO-REORDER — pointer-based, works on touch and mouse.
+   Attach to a container of [data-sortid] rows that each contain a
+   .drag-handle; onEnd(orderedIds) is called after a reorder.
+============================================================ */
+function makeSortable(container, onEnd){
+  if(!container || container._sortableReady) return;
+  container._sortableReady = true;
+  let dragEl=null, startY=0, ph=null, pointerId=null;
+  const rows = ()=>Array.from(container.querySelectorAll('[data-sortid]'));
+  const onDown = (e)=>{
+    const handle = e.target.closest('.drag-handle');
+    if(!handle || !container.contains(handle)) return;
+    dragEl = handle.closest('[data-sortid]'); if(!dragEl) return;
+    e.preventDefault();
+    pointerId = e.pointerId;
+    try{ handle.setPointerCapture(pointerId); }catch(_){}
+    startY = e.clientY;
+    const r = dragEl.getBoundingClientRect();
+    ph = document.createElement('div'); ph.className='sort-placeholder'; ph.style.height = r.height+'px';
+    dragEl.parentNode.insertBefore(ph, dragEl.nextSibling);
+    dragEl.classList.add('dragging');
+    dragEl.style.width = r.width+'px';
+    dragEl._offY = e.clientY - r.top;
+    moveTo(e.clientY);
+  };
+  const moveTo = (clientY)=>{
+    if(!dragEl) return;
+    dragEl.style.transform = `translateY(${clientY - dragEl.getBoundingClientRect().top - (dragEl._offY||0) + (parseFloat(dragEl.style.transform.replace(/[^0-9.-]/g,''))||0)}px)`;
+    // find placeholder position among siblings
+    const siblings = rows().filter(x=>x!==dragEl);
+    let placed=false;
+    for(const s of siblings){
+      const rect = s.getBoundingClientRect();
+      if(clientY < rect.top + rect.height/2){ container.insertBefore(ph, s); placed=true; break; }
+    }
+    if(!placed) container.appendChild(ph);
+  };
+  const onMove = (e)=>{ if(dragEl && e.pointerId===pointerId){ e.preventDefault(); moveTo(e.clientY); } };
+  const onUp = (e)=>{
+    if(!dragEl || e.pointerId!==pointerId) return;
+    container.insertBefore(dragEl, ph);
+    dragEl.classList.remove('dragging'); dragEl.style.transform=''; dragEl.style.width='';
+    if(ph && ph.parentNode) ph.parentNode.removeChild(ph);
+    const order = rows().map(x=>x.getAttribute('data-sortid'));
+    dragEl=null; ph=null; pointerId=null;
+    if(onEnd) onEnd(order);
+  };
+  container.addEventListener('pointerdown', onDown);
+  container.addEventListener('pointermove', onMove);
+  container.addEventListener('pointerup', onUp);
+  container.addEventListener('pointercancel', onUp);
+}
+// Reorder an array of {id} objects to match orderedIds, then run save+render.
+function reorderById(list, orderedIds){
+  const byId = {}; list.forEach(x=>byId[x.id]=x);
+  const out = orderedIds.map(id=>byId[id]).filter(Boolean);
+  list.forEach(x=>{ if(!orderedIds.includes(x.id)) out.push(x); });
+  return out;
+}
+async function saveReorder(key, orderedIds, renderer){
+  await withKeyLock(key, async ()=>{
+    const list = await loadKey(key, []);
+    if(!Array.isArray(list)) return;
+    await saveKey(key, reorderById(list, orderedIds), true);
+  });
+  if(renderer) renderer();
+}
+async function savePersonalReorder(scope, fam, orderedIds, renderer){
+  const key = 'packing-personal';
+  await withKeyLock(key, async ()=>{
+    const all = await loadKey(key, {});
+    if(all[fam]) all[fam] = reorderById(all[fam], orderedIds);
+    await saveKey(key, all, true);
+  });
+  if(renderer) renderer();
+}
+
+/* ============================================================
+   PHOTO ALBUM — direct in-app image upload (compressed, stored as
+   blobs under photo-blobs/<id>, referenced from photo-album.highlights)
+============================================================ */
+function photoBlobUrl(id){ return `${FIREBASE_URL}/photo-blobs/${encodeURIComponent(id)}.json`; }
+async function savePhotoBlob(id, dataUrl){
+  try{
+    const res = await fetch(photoBlobUrl(id), { method:'PUT', headers:{'Content-Type':'application/json', ...(await appCheckHeaders())}, body: JSON.stringify(dataUrl) });
+    return res.ok;
+  }catch(e){ return false; }
+}
+async function deletePhotoBlob(id){ try{ await fetch(photoBlobUrl(id), { method:'DELETE', headers: await appCheckHeaders() }); }catch(e){} }
+async function uploadAlbumPhotos(fileList){
+  const files = Array.from(fileList||[]).filter(f=>/^image\//.test(f.type));
+  if(!files.length) return;
+  const btn = el('album-upload-btn'); if(btn){ btn.disabled=true; btn.textContent='⏳ מעלה...'; }
+  let added=0;
+  for(const file of files){
+    try{
+      const out = await readDocFile(file);              // reuse the doc image compressor
+      const id = uid();
+      const ok = await savePhotoBlob(id, out.dataUrl);
+      if(!ok) continue;
+      await withKeyLock('photo-album', async ()=>{
+        const album = await loadKey('photo-album', { link:'', highlights:[] });
+        if(!album.highlights) album.highlights=[];
+        album.highlights.push({ id, blob:true, caption:'', by:myName()||'' });
+        await saveKey('photo-album', album, true);
+      });
+      added++;
+    }catch(e){ /* skip this file */ }
+  }
+  if(btn){ btn.disabled=false; btn.textContent='⬆️ העלאת תמונות מהמכשיר'; }
+  if(added){ logActivity('add','photo-album',`${added} תמונות הועלו`); showToast(`${added} תמונות נוספו ✓`); }
+  else alertModal('לא הצלחנו להעלות — ייתכן שאין חיבור או שהקבצים גדולים מדי.','⚠️');
+  RENDERERS.photos();
+}
+// Resolve a highlight's image src: inline URL (legacy) or fetched blob (cached).
+async function resolveHighlightSrc(h){
+  if(!h) return null;
+  if(h.url) return h.url;
+  if(h.blob && h.id){
+    cache._photoBlobs = cache._photoBlobs || {};
+    if(cache._photoBlobs[h.id] !== undefined) return cache._photoBlobs[h.id];
+    try{ const res = await fetch(photoBlobUrl(h.id), { headers: await appCheckHeaders() }); const d = res.ok ? await res.json() : null; cache._photoBlobs[h.id]=d; return d; }
+    catch(e){ return null; }
+  }
+  return null;
+}
+
+/* ============================================================
+   ORPHAN BLOB CLEANUP — remove folder-docs/photo-blobs whose id is no
+   longer referenced by any metadata AND not held for Undo. Runs at most
+   once per session, in the background.
+============================================================ */
+async function cleanupOrphanBlobs(){
+  if(cache._orphanCleaned) return; cache._orphanCleaned = true;
+  try{
+    // ids still referenced by document metadata
+    const folder = await loadKey('flight-folder', {});
+    const refDoc = new Set();
+    Object.values(folder||{}).forEach(f=>(f&&f.docs||[]).forEach(d=>refDoc.add(d.id)));
+    // ids referenced by highlight metadata
+    const album = await loadKey('photo-album', {highlights:[]});
+    const refPhoto = new Set((album.highlights||[]).filter(h=>h.blob).map(h=>h.id));
+    // ids still recoverable via Undo (folder-doc-del snapshots)
+    const undo = await loadKey('undo-store', {});
+    Object.values(undo||{}).forEach(r=>{ if(r && r.op && r.op.kind==='folder-doc-del' && r.op.doc) refDoc.add(r.op.doc.id); });
+    // list actual blob ids (shallow) and delete unreferenced ones
+    for(const [node, refs] of [['folder-docs', refDoc], ['photo-blobs', refPhoto]]){
+      try{
+        const res = await fetch(`${FIREBASE_URL}/${node}.json?shallow=true`, { headers: await appCheckHeaders() });
+        if(!res.ok) continue;
+        const ids = await res.json() || {};
+        for(const id of Object.keys(ids)){
+          if(!refs.has(id)){
+            await fetch(`${FIREBASE_URL}/${node}/${encodeURIComponent(id)}.json`, { method:'DELETE', headers: await appCheckHeaders() });
+          }
+        }
+      }catch(e){}
+    }
+  }catch(e){}
+}
+
+/* ---- service worker registration + message handling ---- */
+function registerSW(){
+  if(!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  navigator.serviceWorker.addEventListener('message', e=>{ if(e.data && e.data.type==='open-tab' && RENDERERS[e.data.tab]) switchTab(e.data.tab); });
 }
 
 /* ============================================================
