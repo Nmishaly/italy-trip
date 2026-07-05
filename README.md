@@ -12,6 +12,7 @@ The app is protected by a shared family access code, syncs all data in real time
 
 No installation. No account. No technical setup required by family members — just open the link, enter the code, and use it.
 
+
 ---
 
 ## Features
