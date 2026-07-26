@@ -474,6 +474,12 @@ details.meal-day[open] .sum-chevron{transform:rotate(180deg);}
 .modal .m-msg{font-size:15px; color:var(--text); margin-bottom:20px; line-height:1.6; white-space:pre-line; text-align:start;}
 .modal .m-btns{display:flex; gap:10px;}
 .modal .m-btns .btn{flex:1; padding:12px;}
+.modal.pack-export-modal{max-width:460px;}
+.pack-export-bar{display:flex; justify-content:flex-end; margin:12px 0 4px;}
+.pack-exp-chips{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px;}
+.pack-exp-chip{background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:6px 12px; font-size:12px; font-weight:600; color:var(--text-soft); cursor:pointer; white-space:nowrap;}
+.pack-exp-chip.active{background:var(--brand); color:#fff; border-color:var(--brand);}
+.pack-exp-text{width:100%; box-sizing:border-box; height:230px; resize:vertical; padding:12px; border:1.5px solid var(--border); border-radius:10px; background:var(--surface-2); color:var(--text); font-size:12.5px; line-height:1.65; margin-bottom:16px; white-space:pre; overflow:auto; text-align:start; direction:rtl; font-family:inherit;}
 
 #save-toast{position:fixed; bottom:calc(96px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(10px);
   background:var(--text); color:var(--surface); padding:10px 22px; border-radius:22px; font-size:13.5px; font-weight:600;
@@ -2575,11 +2581,120 @@ RENDERERS.packing = async function(){
       <button class="${cache.packView==='personal'?'active':''}" onclick="setPackView('personal')">רשימות אישיות</button>
       <button class="${cache.packView==='who'?'active':''}" onclick="setPackView('who')">מי מביא מה</button>
     </div>
+    <div class="pack-export-bar"><button class="btn btn-ghost" onclick="openPackExportModal()">📤 ייצוא לוואטסאפ</button></div>
     <div id="pack-body"></div>`;
   await renderPackBody();
 };
 function setPackView(v){ cache.packView=v; cache.editPack=null; RENDERERS.packing(); }
 function selectPackPerson(name){ cache.currentPerson=name; cache.editPack=null; renderPackBody(); }
+
+/* ============================================================
+   EXPORT PACKING LISTS (per family) FOR WHATSAPP
+   Builds a tidy, category-grouped text list for one family or
+   for all families, and shares it via the native share sheet
+   (WhatsApp on mobile) with a clipboard-copy fallback.
+============================================================ */
+const PACK_EXPORT_ALL = '__all__';
+function packStatusMark(done){ return done ? '✅' : '⬜'; }
+// Render a set of items as text, grouped by category (and sub-category) in the
+// same order used on screen. Returns '' when there are no items.
+function packSectionText(items){
+  const cats = packCats();
+  const lines = [];
+  const emit = its => its.forEach(it=> lines.push(`${packStatusMark(it.done)} ${it.text}`));
+  cats.forEach(c=>{
+    const inCat = (items||[]).filter(it=>effCat(it)===c.id);
+    if(!inCat.length) return;
+    lines.push(`${c.icon} ${c.label}`);
+    if(c.subs && c.subs.length){
+      c.subs.forEach(s=>{ const its=inCat.filter(it=>it.sub===s.id); if(its.length){ lines.push(`• ${s.label}`); emit(its); } });
+      emit(inCat.filter(it=>!it.sub || !c.subs.some(s=>s.id===it.sub)));
+    } else emit(inCat);
+  });
+  return lines.join('\n');
+}
+// The full list for one family: its personal list + the shared items assigned to
+// it — the same content shown in the "מי מביא מה" view.
+function buildFamilyPackText(fam, personalAll, shared){
+  const personal = personalAll[fam] || defaultPersonalPacking();
+  const sharedAssigned = (shared||[]).filter(s=>(s.assignedTo||[]).includes(fam));
+  const total = personal.length + sharedAssigned.length;
+  const done = personal.filter(x=>x.done).length + sharedAssigned.filter(x=>x.done).length;
+  const pText = packSectionText(personal);
+  const sText = packSectionText(sharedAssigned);
+  let out = `🎒 רשימת אריזה — ${fam}`;
+  if(pText) out += `\n\n🧍 אישי\n${pText}`;
+  if(sText) out += `\n\n🎒 מהרשימה המשותפת (משויך אליכם)\n${sText}`;
+  if(!pText && !sText) out += `\n\n(אין פריטים ברשימה)`;
+  out += `\n\n☑️ נארזו ${done} מתוך ${total}`;
+  return out;
+}
+function buildPackExportText(target, personalAll, shared){
+  if(target === PACK_EXPORT_ALL){
+    const header = '🧳 רשימות אריזה · אומבריה קיץ תשפ"ו';
+    const sep = '\n\n───────────────\n\n';
+    return header + '\n\n' + FAMILIES.map(f=>buildFamilyPackText(f, personalAll, shared)).join(sep);
+  }
+  return buildFamilyPackText(target, personalAll, shared);
+}
+async function copyTextToClipboard(text){
+  try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; } }catch(e){}
+  try{
+    const ta=document.createElement('textarea'); ta.value=text;
+    ta.style.position='fixed'; ta.style.top='-9999px'; ta.setAttribute('readonly','');
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok=document.execCommand('copy'); ta.remove(); return ok;
+  }catch(e){ return false; }
+}
+async function openPackExportModal(){
+  const shared = await loadKey('packing-shared', []);
+  const personalAll = await loadKey('packing-personal', {});
+  let target = cache.currentPerson || FAMILIES[0];
+  const root = el('modal-root');
+  const ov = document.createElement('div');
+  ov.className='modal-overlay';
+  const chip = (val,label)=>`<button class="pack-exp-chip" data-target="${escapeHtml(val)}">${escapeHtml(label)}</button>`;
+  ov.innerHTML = `<div class="modal pack-export-modal" role="dialog" aria-modal="true">
+    <div class="m-ic">📤</div>
+    <div class="m-msg">ייצוא רשימת אריזה לשליחה בוואטסאפ — בחרו משפחה או ייצאו את כולן:</div>
+    <div class="pack-exp-chips">${chip(PACK_EXPORT_ALL,'🧳 כל המשפחות')}${FAMILIES.map(f=>chip(f,f)).join('')}</div>
+    <textarea id="pack-exp-text" class="pack-exp-text" readonly aria-label="תצוגה מקדימה של הרשימה"></textarea>
+    <div class="m-btns">
+      <button class="btn btn-ghost" data-act="close">סגירה</button>
+      <button class="btn btn-ghost" data-act="copy">📋 העתקה</button>
+      <button class="btn btn-save" data-act="share">📤 שיתוף</button>
+    </div></div>`;
+  root.appendChild(ov);
+  requestAnimationFrame(()=>ov.classList.add('show'));
+  const ta = ov.querySelector('#pack-exp-text');
+  const chips = ov.querySelectorAll('.pack-exp-chip');
+  function refresh(){
+    ta.value = buildPackExportText(target, personalAll, shared);
+    chips.forEach(c=>c.classList.toggle('active', c.getAttribute('data-target')===target));
+  }
+  chips.forEach(c=> c.onclick = ()=>{ target=c.getAttribute('data-target'); refresh(); });
+  refresh();
+  const close=()=>{ ov.classList.remove('show'); setTimeout(()=>ov.remove(),200); };
+  ov.querySelector('[data-act=close]').onclick=close;
+  ov.addEventListener('click', e=>{ if(e.target===ov) close(); });
+  document.addEventListener('keydown', function esc(e){ if(e.key==='Escape'){ document.removeEventListener('keydown',esc); close(); } });
+  ov.querySelector('[data-act=copy]').onclick=async ()=>{
+    const ok=await copyTextToClipboard(ta.value);
+    showToast(ok?'הרשימה הועתקה ללוח ✓':'ההעתקה נכשלה — בחרו והעתיקו ידנית');
+  };
+  ov.querySelector('[data-act=share]').onclick=async ()=>{
+    const text=ta.value;
+    const title = target===PACK_EXPORT_ALL ? 'רשימות אריזה' : `רשימת אריזה — ${target}`;
+    if(navigator.share){
+      try{ await navigator.share({title, text}); }
+      catch(e){ if(e && e.name==='AbortError') return; /* fall through to copy on real failure */
+        const ok=await copyTextToClipboard(text); showToast(ok?'הועתק ללוח — הדביקו בוואטסאפ 📋':'השיתוף נכשל'); }
+    } else {
+      const ok=await copyTextToClipboard(text);
+      showToast(ok?'הועתק ללוח — הדביקו בוואטסאפ 📋':'ההעתקה נכשלה');
+    }
+  };
+}
 
 async function renderPackBody(){
   let shared = await loadKey('packing-shared', null, {swr:true});
