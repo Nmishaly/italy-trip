@@ -1518,7 +1518,7 @@ async function exportData(){
 }
 // Only keys the app actually owns may be restored — a stray/corrupt file can't
 // inject arbitrary nodes into the shared database.
-const IMPORTABLE_KEYS = new Set(['board','itinerary-days','places','stay-flights','kosher-spots','synagogues','packing-shared','packing-personal','pack-categories','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list','map-pins','activity-log','flight-folder','folder-docs','photo-album','photo-blobs']);
+const IMPORTABLE_KEYS = new Set(['board','itinerary-days','places','stay-flights','kosher-spots','kosher-barcodes','synagogues','packing-shared','packing-personal','pack-categories','tasks','preflight','contacts','villa-attractions-custom','meal-rota','shopping-list','map-pins','activity-log','flight-folder','folder-docs','photo-album','photo-blobs']);
 async function importBackupData(file){
   if(!file) return;
   let data;
@@ -2048,13 +2048,14 @@ RENDERERS.kosher = async function(){
   }
 
   const tab = cache.kosherTab || 'dining';
-  const tabs = [['dining','🍽️','שבת ומסעדות'],['market','🛒','קניות בסופר'],['hechsher','🏅','הכשרים'],['guide','📖','המדריך']];
+  const tabs = [['dining','🍽️','שבת ומסעדות'],['market','🛒','קניות בסופר'],['barcode','📷','ברקודים'],['hechsher','🏅','הכשרים'],['guide','📖','המדריך']];
   const tabBar = `<div class="shop-cat-bar" style="margin-bottom:12px">${tabs.map(([id,ic,lbl])=>
     `<button class="shop-cat-tab${id===tab?' active':''}" onclick="setKosherTab('${id}')">${ic} ${lbl}</button>`).join('')}</div>`;
 
   let body='';
   if(tab==='dining')        body = kosherDiningHtml();
   else if(tab==='market')   body = kosherMarketHtml();
+  else if(tab==='barcode')  body = kosherBarcodeHtml();
   else if(tab==='hechsher') body = kosherHechsherHtml();
   else                      body = kosherGuideHtml();
 
@@ -2064,6 +2065,10 @@ RENDERERS.kosher = async function(){
     renderSynList(syns);
     renderKosherList(kosherSpots);
     ensureShabbatTimes();
+  }
+  if(tab==='barcode'){
+    const barcodes = await loadKey('kosher-barcodes', [], {swr:true}) || [];
+    renderBarcodeList(barcodes);
   }
 };
 function setKosherTab(t){ cache.kosherTab=t; RENDERERS.kosher(); }
@@ -2248,6 +2253,97 @@ async function delKosherSpot(id){
 function searchKosherNear(){
   const addr = el('addr-search').value.trim(); if(!addr) return;
   window.open(`https://www.google.com/maps/search/${encodeURIComponent('kosher restaurant near '+addr)}`, '_blank', 'noopener');
+}
+
+/* ---------- KOSHER PRODUCT BARCODES ---------- */
+// A private, shareable list of kosher packaged products, each with its barcode,
+// so it can be matched against the number printed on the package while shopping.
+function kosherBarcodeHtml(){
+  const legend = Object.values(KOSHER_STATUS).map(v=>
+    `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;margin-inline-end:12px;white-space:nowrap"><span style="width:10px;height:10px;border-radius:50%;background:${v.color};display:inline-block"></span>${v.label}</span>`).join('');
+  return `
+    <div class="info-box" style="margin-bottom:12px">
+      <div style="display:flex;flex-wrap:wrap;gap:4px 0">${legend}</div>
+      <div class="muted" style="margin-top:8px">רשימת מוצרים כשרים לפי ברקוד. הקלידו את מספר הברקוד מהאריזה כדי לבדוק אם המוצר ברשימה. המידע נשמר ומשותף עם שאר המכשירים — ודאו תמיד סמל הכשר בתוקף על האריזה בפועל.</div>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <input type="search" inputmode="numeric" id="barcode-search" placeholder="חיפוש לפי ברקוד או שם מוצר..." value="${escapeHtml(cache.barcodeSearch||'')}" oninput="onBarcodeSearch(this.value)">
+    </div>
+    <div id="barcode-list"></div>
+    <div class="section-title">➕ הוספת מוצר</div>
+    <div class="card">
+      <div class="row"><input type="text" id="bc-name" placeholder="שם המוצר..."></div>
+      <div class="row"><input type="text" id="bc-code" inputmode="numeric" placeholder="ברקוד (הספרות שמתחת לפסים)..."></div>
+      <div class="row">
+        <select id="bc-status">${Object.entries(KOSHER_STATUS).map(([k,v])=>`<option value="${k}"${k==='ok'?' selected':''}>${v.label}</option>`).join('')}</select>
+      </div>
+      <div class="row"><input type="text" id="bc-note" placeholder="הערה (יצרן, הכשר, סניף...)"><button class="btn btn-add" id="bc-btn" onclick="addBarcode()">הוספה</button></div>
+    </div>`;
+}
+
+function renderBarcodeList(items){
+  const term = (cache.barcodeSearch||'').trim().toLowerCase();
+  const digits = term.replace(/\D/g,'');
+  const filtered = items.filter(it=>{
+    if(!term) return true;
+    const nameMatch = (it.name||'').toLowerCase().includes(term);
+    const codeMatch = digits && (it.barcode||'').replace(/\D/g,'').includes(digits);
+    return nameMatch || codeMatch;
+  });
+  const box = el('barcode-list'); if(!box) return;
+  if(!items.length){ box.innerHTML = '<div class="card empty-hint">אין עדיין מוצרים ברשימה — הוסיפו מוצר כשר עם הברקוד שלו למטה.</div>'; return; }
+  if(!filtered.length){ box.innerHTML = '<div class="card empty-hint">לא נמצא מוצר תואם לחיפוש.</div>'; return; }
+  box.innerHTML = filtered.map(it=>{
+    const st = KOSHER_STATUS[it.status] || KOSHER_STATUS.check;
+    return `<div class="card list-card">
+      <div style="min-width:0">
+        <b>${escapeHtml(it.name)}</b>
+        ${it.barcode?`<div class="muted" style="margin-top:3px;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:1px;direction:ltr;text-align:start">${escapeHtml(it.barcode)}</div>`:''}
+        ${it.note?`<div class="muted" style="margin-top:3px">${escapeHtml(it.note)}</div>`:''}
+      </div>
+      <div class="lc-actions">
+        <span class="tag" style="background:${st.color}">${st.label}</span>
+        <button class="btn-icon" title="עריכה" aria-label="עריכה" onclick="editBarcode('${it.id}')">✏️</button>
+        <button class="btn-del" aria-label="מחיקה" onclick="delBarcode('${it.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function onBarcodeSearch(v){
+  cache.barcodeSearch = v;
+  const items = await loadKey('kosher-barcodes', []);
+  renderBarcodeList(items);
+}
+
+async function addBarcode(){
+  const name = el('bc-name').value.trim();
+  const barcode = el('bc-code').value.trim();
+  const status = el('bc-status').value;
+  const note = el('bc-note').value.trim();
+  if(!name) return;
+  const editing = !!cache.editBarcodeId;
+  return withKeyLock('kosher-barcodes', async ()=>{
+    const items = await loadKey('kosher-barcodes', []);
+    if(editing){ const it=items.find(x=>x.id===cache.editBarcodeId); if(it){it.name=name;it.barcode=barcode;it.status=status;it.note=note;} cache.editBarcodeId=null; }
+    else items.push({id:uid(), name, barcode, status, note});
+    await saveKey('kosher-barcodes', items);
+    logActivity(editing?'edit':'add', 'kosher-barcodes', name + (barcode?` · ${barcode}`:''));
+    RENDERERS.kosher();
+  });
+}
+async function editBarcode(id){
+  const items = await loadKey('kosher-barcodes', []); const it = items.find(x=>x.id===id); if(!it) return;
+  cache.editBarcodeId = id;
+  el('bc-name').value=it.name||''; el('bc-code').value=it.barcode||''; el('bc-status').value=it.status||'ok'; el('bc-note').value=it.note||'';
+  el('bc-btn').textContent='עדכון ✓'; el('bc-name').focus();
+}
+async function delBarcode(id){
+  if(!(await confirmModal('למחוק את המוצר מהרשימה?'))) return;
+  return withKeyLock('kosher-barcodes', async ()=>{
+    let items = await loadKey('kosher-barcodes', []); const removed=items.find(x=>x.id===id); items = items.filter(x=>x.id!==id);
+    await saveKey('kosher-barcodes', items); logActivity('del','kosher-barcodes',removed?removed.name:''); RENDERERS.kosher();
+  });
 }
 
 /* ---------- KOSHER NEAR THE VILLA ---------- */
