@@ -7,6 +7,7 @@
     "places":                  { ".read": true, ".write": true },
     "villa-attractions-custom":{ ".read": true, ".write": true },
     "kosher-spots":            { ".read": true, ".write": true },
+    "kosher-barcodes":         { ".read": true, ".write": true },
     "synagogues":              { ".read": true, ".write": true },
     "contacts":                { ".read": true, ".write": true },
     "packing-shared":          { ".read": true, ".write": true },
